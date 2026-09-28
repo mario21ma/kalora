@@ -1,0 +1,26 @@
+const {PGlite}=await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {initialState} from '../lib/domain.ts';
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to authenticated;grant execute on function auth.uid() to authenticated;`);
+await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
+const a='00000000-0000-4000-8000-000000000001',b='00000000-0000-4000-8000-000000000002';
+await db.query('insert into auth.users values($1),($2)',[a,b]);
+await db.exec('set role authenticated');
+await db.query("select set_config('request.jwt.claim.sub',$1,false)",[a]);
+const s=initialState();
+let r=await db.query('select save_diary($1::jsonb,0) as saved',[JSON.stringify(s)]);assert.equal(r.rows[0].saved.revision,1);
+r=await db.query('select load_diary() as result');assert.equal(r.rows[0].result.state.items.length,7);assert.equal(r.rows[0].result.state.profile.name,'Mario');
+await assert.rejects(()=>db.query('select save_diary($1::jsonb,0)',[JSON.stringify(s)]),/CONFLICT/);
+await db.query("select set_config('request.jwt.claim.sub',$1,false)",[b]);
+r=await db.query('select * from profiles');assert.equal(r.rows.length,0);
+r=await db.query('select * from meal_items');assert.equal(r.rows.length,0);
+await assert.rejects(()=>db.query('insert into profiles(user_id,profile) values($1,$2)',[a,{}]),/row-level security/);
+await db.query('select save_diary($1::jsonb,0)',[JSON.stringify(initialState(false))]);
+r=await db.query('select load_diary() as result');assert.equal(r.rows[0].result.state.items.length,0);
+for(let i=0;i<40;i++){r=await db.query('select consume_ai_quota() as allowed');assert.equal(r.rows[0].allowed,true)}
+r=await db.query('select consume_ai_quota() as allowed');assert.equal(r.rows[0].allowed,false);
+await assert.rejects(()=>db.query('select * from ai_usage'),/permission denied/);
+console.log('PASS: migration, save/load, revision conflict, cross-user RLS reads/writes, independent accounts, 40/hour quota, quota table isolation');
+await db.close();

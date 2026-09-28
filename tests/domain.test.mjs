@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {baseFoods,parseLocal,sum,makeItem,nutrition,stateSchema,initialState,dayOffset,dateKey,suggestTargets,defaultProfile} from '../lib/domain.ts';
+const date='2026-09-28';
+test('Croatian breakfast with half, spoon and whey',()=>{const r=parseLocal('1 banana, pola avokada, 100 g zobenih i 1 mjerica whey hydro izolata',baseFoods,'breakfast',date);assert.equal(r.items.length,4);assert.deepEqual(r.unknown,[]);assert.equal(r.items.find(i=>i.foodId==='avocado').grams,75);assert.equal(r.items.find(i=>i.foodId==='oats').grams,100);assert.equal(r.items.find(i=>i.foodId==='whey').grams,30)});
+test('stuffed peppers, estimated portion, exact bread',()=>{const r=parseLocal('ručak: 3 srednje punjene paprike i oko 60 g bijelog kruha',baseFoods,'snack',date);assert.deepEqual(r.items.map(i=>i.grams),[660,60]);assert.ok(r.items.every(i=>i.meal==='lunch'));assert.ok(r.items.every(i=>i.isEstimate));assert.equal(Math.round(sum(r.items).calories),1018)});
+test('unknown items are not fabricated or silently accepted',()=>{const r=parseLocal('banana i plutonijev sendvič',baseFoods,'snack',date);assert.equal(r.items.length,1);assert.deepEqual(r.unknown,['plutonijev sendvic'])});
+test('decimal comma and kg conversion',()=>{const r=parseLocal('0,15 kg banane, 50 g pršuta',baseFoods,'snack',date);assert.deepEqual(r.items.map(i=>i.grams),[150,50])});
+test('human bread slices and eggs scale correctly',()=>{const r=parseLocal('Pojeo sam 2 jaja, 2 fete kruha, 50 g pršuta i jednu bananu.',baseFoods,'breakfast',date);assert.deepEqual(r.items.map(i=>i.grams),[100,70,50,120]);assert.equal(Math.round(sum(r.items).calories),573)});
+test('amount edits scale all nutrients without compounding rounding',()=>{const f=baseFoods.find(f=>f.id==='bread'),i=makeItem(f,60,'lunch',date);assert.equal(nutrition(i).calories,159.6);assert.equal(nutrition({...i,grams:100}).calories,266);assert.equal(nutrition({...i,grams:60}).calories,159.6)});
+test('invalid states rejected before persistence',()=>{const s=initialState();assert.ok(stateSchema.safeParse(s).success);s.items[0].grams=-5;assert.equal(stateSchema.safeParse(s).success,false);s.items[0].grams=5001;assert.equal(stateSchema.safeParse(s).success,false)});
+test('Zagreb date crosses midnight and DST correctly',()=>{assert.equal(dateKey(new Date('2026-09-28T22:30:00Z')),'2026-09-29');assert.equal(dayOffset('2026-03-29',-1),'2026-03-28');assert.equal(dayOffset('2026-10-25',1),'2026-10-26')});
+test('goal formula returns bounded balanced proposal',()=>{const goal=suggestTargets(defaultProfile);assert.ok(goal.calories>=2500&&goal.calories<=3200);assert.ok(Math.abs(goal.protein*4+goal.carbs*4+goal.fat*9-goal.calories)<=4)});

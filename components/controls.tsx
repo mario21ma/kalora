@@ -1,0 +1,6 @@
+'use client';
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {X} from 'lucide-react';
+export function Choice({value,onChange,options,label}:{value:string,onChange:(v:string)=>void,options:{value:string,label:string}[],label:string}){return <Select value={value} onValueChange={onChange}><SelectTrigger className="choice" aria-label={label}><SelectValue/></SelectTrigger><SelectContent>{options.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>}
+export function Modal({open,onClose,title,description,children}:{open:boolean,onClose:()=>void,title:string,description:string,children:React.ReactNode}){return <Dialog open={open} onOpenChange={v=>!v&&onClose()}><DialogContent className="app-modal" showCloseButton={false}><button className="close icon-button" aria-label="Zatvori" onClick={onClose}><X size={22}/></button><DialogTitle className="modal-title">{title}</DialogTitle><DialogDescription className="muted">{description}</DialogDescription>{children}</DialogContent></Dialog>}
