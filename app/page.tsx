@@ -45,109 +45,8 @@ export default function App(){
  return reply;
  }
  async function sendChat(text=chat){if(!text.trim()||busy||!state)return;setChat('');setPending(null);setBusy(true);let reply='';let foodToAnalyze='';try{if(aiReady&&online&&(user||anonymousAi)){if(user)await sync();const last7=Array.from({length:7},(_,i)=>{const d=dayOffset(date,-i),entries=state.items.filter(x=>x.date===d);return {date:d,logged:entries.length>0,total:sum(entries)}});const r=await aiCall('chat',{text,date,context:{items:state.items.filter(i=>i.date===date),target:state.targets[date]||state.profile.targets,last7,history:state.messages.slice(-8)}});reply=r.reply;if(r.action==='add'&&r.foodText){foodToAnalyze=r.foodText;setInput(r.foodText);setPreview([]);setUnknown([]);setModal('add')}else if(r.action==='edit'||r.action==='delete')setPending(r)}else reply=localChat(text)||'';update(s=>({...s,messages:[...s.messages,{role:'user' as const,content:text},{role:'assistant' as const,content:reply}].slice(-200)}))}catch(e){toast.error((e as Error).message);setChat(text)}finally{setBusy(false);setTimeout(()=>bottom.current?.scrollIntoView({behavior:'smooth'}),50);if(foodToAnalyze)setTimeout(()=>void analyze(foodToAnalyze),80)}}
- if(!state)return <main className="loading-screen">if(!user)return <>
- <Toaster position="top-center" richColors/>
- <main className="loading-screen">
-  <section className="card" style={{width:'100%',maxWidth:520,textAlign:'left'}}>
-   <div className="welcome-mark">K<span>•</span></div>
-
-   <h1>Dobrodošao u Kaloru</h1>
-
-   <p className="muted" style={{marginTop:10,marginBottom:18}}>
-    Registriraj se ili se prijavi za svoj osobni dnevnik prehrane.
-   </p>
-
-   <Choice
-    value={loginMode}
-    onChange={setLoginMode}
-    label="Način prijave"
-    options={[
-     {value:'signup',label:'Novi račun'},
-     {value:'login',label:'Prijava lozinkom'},
-     {value:'magic',label:'Prijava e-mail poveznicom'}
-    ]}
-   />
-
-   <form onSubmit={async e=>{
-    e.preventDefault();
-    setBusy(true);
-    setAuthMessage('');
-
-    const d=new FormData(e.currentTarget);
-
-    try{
-     if(loginMode==='magic'){
-      await authRequest(
-       'otp?redirect_to='+encodeURIComponent(location.origin),
-       {email:d.get('email'),create_user:true}
-      );
-      setAuthMessage('Provjeri e-mail i otvori poveznicu za prijavu.');
-     }
-     else if(loginMode==='signup'){
-      await authRequest('signup',{
-       email:d.get('email'),
-       password:d.get('password')
-      });
-      setAuthMessage('Račun je kreiran.');
-     }
-     else{
-      await authRequest('token?grant_type=password',{
-       email:d.get('email'),
-       password:d.get('password')
-      });
-      toast.success('Prijava je uspjela');
-     }
-    }
-    catch(e){
-     setAuthMessage((e as Error).message);
-    }
-    finally{
-     setBusy(false);
-    }
-   }}>
-
-    <label className="field">
-     E-mail
-     <input
-      type="email"
-      name="email"
-      required
-      autoComplete="email"
-     />
-    </label>
-
-    {loginMode!=='magic'&&
-     <label className="field">
-      Lozinka
-      <input
-       type="password"
-       name="password"
-       required
-       minLength={8}
-       autoComplete={loginMode==='signup'?'new-password':'current-password'}
-      />
-     </label>
-    }
-
-    <button className="primary full" disabled={busy}>
-     {busy
-      ?'Pričekaj…'
-      :loginMode==='magic'
-       ?'Pošalji poveznicu'
-       :loginMode==='signup'
-        ?'Kreiraj račun'
-        :'Prijavi se'}
-    </button>
-   </form>
-
-   {authMessage&&
-    <p role="status" className="small-note">
-     {authMessage}
-    </p>
-   }
-  </section>
- </main>
-</>;<div className="welcome-mark">K<span>•</span></div>{error?<><p role="alert">{error}</p><button className="secondary" onClick={()=>{const raw=localStorage.getItem('kalora-v1-'+(user?.user.id||'guest'));if(raw){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([raw]));a.download='kalora-zasticena-kopija.json';a.click()}}}>Preuzmi sačuvanu kopiju</button></>:<><LoaderCircle className="spin"/><p>Pripremamo tvoj dnevnik…</p></>}</main>;
+ if(!state)return <main className="loading-screen"><div className="welcome-mark">K<span>•</span></div>{error?<><p role="alert">{error}</p><button className="secondary" onClick={()=>{const raw=localStorage.getItem('kalora-v1-'+(user?.user.id||'guest'));if(raw){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([raw]));a.download='kalora-zasticena-kopija.json';a.click()}}}>Preuzmi sačuvanu kopiju</button></>:<><LoaderCircle className="spin"/><p>Pripremamo tvoj dnevnik…</p></>}</main>;
+ if(!user)return <><Toaster position="top-center" richColors/><main className="loading-screen"><section className="card" style={{width:'100%',maxWidth:520,textAlign:'left'}}><div className="welcome-mark">K<span>•</span></div><h1>Dobrodošao u Kaloru</h1><p className="muted" style={{marginTop:10,marginBottom:18}}>Registriraj se ili se prijavi za svoj osobni dnevnik prehrane.</p>{cloudReady()?<><Choice value={loginMode} onChange={setLoginMode} label="Način prijave" options={[{value:'signup',label:'Novi račun'},{value:'login',label:'Prijava lozinkom'},{value:'magic',label:'Prijava e-mail poveznicom'}]}/><form autoComplete="off" onSubmit={async e=>{e.preventDefault();setBusy(true);setAuthMessage('');const d=new FormData(e.currentTarget);try{if(loginMode==='magic'){await authRequest('otp?redirect_to='+encodeURIComponent(location.origin),{email:d.get('email'),create_user:true});setAuthMessage('Provjeri e-mail i otvori poveznicu za prijavu.')}else if(loginMode==='signup'){await authRequest('signup',{email:d.get('email'),password:d.get('password')});setAuthMessage('Račun je kreiran.')}else{await authRequest('token?grant_type=password',{email:d.get('email'),password:d.get('password')});toast.success('Prijava je uspjela')}}catch(e){setAuthMessage((e as Error).message)}finally{setBusy(false)}}}><label className="field">E-mail<input type="email" name="email" required autoComplete="email"/></label>{loginMode!=='magic'&&<label className="field">Lozinka<input type="password" name="password" required minLength={8} autoComplete={loginMode==='signup'?'new-password':'current-password'}/></label>}<button className="primary full" disabled={busy}>{busy?'Pričekaj…':loginMode==='magic'?'Pošalji poveznicu':loginMode==='signup'?'Kreiraj račun':'Prijavi se'}</button></form>{authMessage&&<p role="status" className="small-note">{authMessage}</p>}</>:<div className="notice">Prijava nije povezana. Provjeri Supabase varijable okruženja.</div>}</section></main></>;
  const statsDays=Array.from({length:Number(range)},(_,i)=>dayOffset(date,-i)),statsItems=state.items.filter(i=>statsDays.includes(i.date)),loggedDays=new Set(statsItems.map(i=>i.date)).size,statsTotal=sum(statsItems),within=statsDays.filter(d=>state.items.some(i=>i.date===d)&&sum(state.items.filter(i=>i.date===d)).calories<=(state.targets[d]||state.profile.targets).calories).length;
  const chartDays=Array.from({length:7},(_,i)=>dayOffset(date,i-6));
  const filteredWeights=state.weights.filter(w=>w.date>=dayOffset(date,1-Number(weightRange))&&w.date<=date).sort((a,b)=>a.date.localeCompare(b.date));
@@ -166,58 +65,13 @@ export default function App(){
  <TabsContent value="ai" className="tab-page"><section className="chat-card card"><div className="chat-heading"><span className="ai-spark"><Sparkles size={24}/></span><div><h2>Tvoj asistent za prehranu</h2><p className="muted">{aiReady?(user?'AI povezan s tvojim spremljenim dnevnikom':anonymousAi?'AI radi s lokalnim dnevnikom na ovom uređaju':'Prijavi se za AI razgovor'):'Lokalni pomoćnik · ograničene naredbe bez AI-ja'}</p></div></div><div className="chat-messages" aria-live="polite">{!state.messages.length?<div className="chat-welcome"><p className="eyebrow">KRENI OD ONOGA ŠTO TE ZANIMA</p><h2>Brojke su tu.<br/>Pitaj što ti treba.</h2><div className="chat-suggestions">{['Koliko mi je ostalo kalorija danas?','Koliko još proteina trebam?','Dodaj jednu Medjool datulju.','Koliki je tjedni prosjek kalorija?'].map(q=><button key={q} onClick={()=>void sendChat(q)}>{q}<ArrowUpRight size={17}/></button>)}</div></div>:state.messages.map((m,i)=><div className={'chat-bubble '+m.role} key={i}>{m.role==='assistant'&&<Sparkles size={16}/>}<p>{m.content}</p></div>)}{busy&&<div className="muted"><LoaderCircle className="spin" size={18}/> Trenutak…</div>}{pending&&<div className="action-confirm"><p>Prijedlog još nije spremljen.</p><button className="primary" onClick={()=>{const item=state.items.find(i=>i.id===pending.itemId);if(!item){toast.error('Stavka više ne postoji.');setPending(null);return}if(pending.action==='edit'&&pending.grams&&pending.grams>0&&pending.grams<=5000)changeItems(state.items.map(i=>i.id===item.id?{...i,grams:pending.grams!,isEstimate:false}:i),'Količina promijenjena');else if(pending.action==='delete')changeItems(state.items.filter(i=>i.id!==item.id),'Stavka obrisana');setPending(null)}}>Potvrdi {pending.action==='delete'?'brisanje':'izmjenu'}</button><button className="secondary" onClick={()=>setPending(null)}>Odustani</button></div>}<div ref={bottom}/></div><form className="chat-form" onSubmit={e=>{e.preventDefault();void sendChat()}}><input aria-label="Poruka asistentu" placeholder="Pitaj ili napiši što si pojeo…" value={chat} maxLength={2000} onChange={e=>setChat(e.target.value)}/><button className="primary" disabled={busy||!chat.trim()} aria-label="Pošalji poruku"><Send size={20}/></button></form><p className="chat-note">Za {dateLabel(date)} · izmjene potvrđuješ prije spremanja.</p></section></TabsContent>
  <TabsContent value="profile" className="tab-page"><div className="profile-grid"><section className="card"><div className="section-top"><h2>Osobni podaci i ciljevi</h2><UserRound size={21}/></div><ProfileForm value={state.profile} onSave={p=>{update(s=>({...s,profile:p}));toast.success('Profil spremljen')}}/></section><div className="right-stack"><section className="card"><h2>Račun i spremanje</h2><p className="muted">{user?user.user.email:'Dnevnik je trenutačno spremljen samo u ovom pregledniku.'}</p>{user?<><p>{status}</p><button className="secondary" onClick={()=>void sync().catch(e=>toast.error(e.message))}><Cloud size={18}/>Sinkroniziraj</button><button className="text-button" onClick={()=>void signOut()}><LogOut size={17}/>Odjavi se</button></>:<button className="primary" onClick={()=>{setAuthMessage('');setModal('login')}}>Prijava / registracija <ArrowRight size={17}/></button>}<p className="small-note">{cloudReady()?'Lokalni dnevnik i prijavljeni račun čuvaju se odvojeno. Za prijenos koristi izvoz i uvoz.':'Za prijavu i sinkronizaciju potrebno je povezati Supabase prema priloženim uputama.'}</p><div className="divider"/><h3>AI unos i razgovor</h3><p className="muted">{aiReady?(user?'AI je povezan i koristi spremljeni cloud dnevnik.':anonymousAi?'AI je povezan i može procjenjivati hranu bez ručnog unosa deklaracije.':'AI je povezan, ali anonimni AI je isključen — prijavi se za korištenje.'):'AI nije povezan. Dok ne postaviš API ključ, radi samo ograničeni lokalni unos poznatih namirnica.'}</p><p className="small-note">OpenAI API ključ postavlja se isključivo na poslužitelju. AI procjene su približne; točne deklaracije možeš dodati samo ako želiš precizniji proizvod.</p></section><section className="card"><h2>Izgled</h2><Choice label="Tema" value={theme} onChange={setTheme} options={[{value:'system',label:'Prati sustav'},{value:'light',label:'Svijetlo'},{value:'dark',label:'Tamno'}]}/><div className="divider"/><h3>Instaliraj na iPhone</h3><p className="muted">Otvori aplikaciju u Safariju. Dodirni <b>Dijeli</b>, zatim <b>Dodaj na početni zaslon</b>.</p><p className="small-note">Offline dnevnik dostupan je nakon prvog učitavanja objavljene aplikacije. AI i prijava trebaju internet.</p></section><section className="card"><h2>Tvoji podaci</h2><button className="secondary" onClick={()=>exportData(state)}><Download size={18}/>Izvezi dnevnik</button><label className="upload-button secondary">Uvezi sigurnosnu kopiju<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5e6)throw new Error('Datoteka je prevelika.');const imported=stateSchema.parse(JSON.parse(await file.text()));const previous=state;update(()=>imported);toast.success('Dnevnik uvezen',{action:{label:t('undo'),onClick:()=>update(()=>previous)},duration:10000})}catch{toast.error('Datoteka nije valjan Kalora dnevnik.')}e.target.value=''}}/></label><p className="small-note">Uvoz zamjenjuje trenutni dnevnik. Prvo izvezi postojeće podatke.</p><button className="text-button" onClick={()=>setModal('food')}>Dodaj točnu deklaraciju (opcionalno) <Plus size={16}/></button></section></div></div></TabsContent>
  </main><footer className="desktop-footer"><span>kalora<span>•</span></span><p>Malo više svijesti. Malo više ravnoteže.</p><small>Vrijednosti su okvirne procjene.</small></footer></div><TabsList className="bottom-nav">{[['today','Danas',Home],['history','Povijest',CalendarDays],['ai','AI',Sparkles],['profile','Profil',UserRound]].map(([value,label,Icon])=><TabsTrigger key={String(value)} value={String(value)}><Icon size={21}/><span>{String(label)}</span></TabsTrigger>)}</TabsList><button className="mobile-fab" onClick={()=>openAdd()} aria-label="Dodaj obrok"><Plus size={27}/></button></Tabs>
- <Modal open={modal==='add'} onClose={close} title="Što si pojeo?" description={`Dodavanje za ${dateLabel(date)}. Napiši obrok svojim riječima — AI će napraviti procjenu.`}><Choice value={meal} onChange={m=>{const next=m as MealType;setMeal(next);setPreview(p=>p.map(i=>({...i,meal:next})))}} label="Obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/><textarea autoFocus rows={3} maxLength={2000} value={input} onChange={e=>setInput(e.target.value)} placeholder="npr. 3 punjene paprike i oko 60 g kruha" aria-label="Opis obroka"/><button className="primary full" disabled={busy||!input.trim()} onClick={()=>void analyze()}>{busy?<LoaderCircle className="spin" size={18}/>:<Sparkles size={18}/>} {busy?'Procjenjujem obrok…':aiReady&&(user||anonymousAi)?'Procijeni s AI':'Analiziraj'}</button><p className="small-note">{aiReady&&online&&(user||anonymousAi)?'AI procjenjuje i hranu koja nije u lokalnoj bazi. Ako gramaža nije navedena, koristi tipičnu porciju i označava procjenu.':!online?'Izvanmrežno si. AI procjena treba internet; poznate namirnice možeš privremeno analizirati lokalno.':aiReady&&!user&&!anonymousAi?'AI je povezan, ali za korištenje se trebaš prijaviti.':'AI još nije povezan. Postavi OPENAI_API_KEY za automatsku procjenu bilo kojeg prepoznatljivog jela.'}</p>{unknown.length>0&&<div className="notice" role="alert">Nisam siguran za: {unknown.join(', ')}. Opiši taj dio malo jasnije (npr. vrstu hrane, broj komada ili veličinu porcije) i pokušaj ponovno.</div>}{preview.length>0&&<section className="preview-section"><h3>Procijenjeni obrok <span className="small-pill">{analyzeMode==='ai'?'AI PROCJENA':'BRZI ODABIR'}</span></h3>{preview.map(i=><div className="preview-row" key={i.id}><div><b>{i.name}</b><small>{fmt(nutrition(i).calories)} kcal · {i.source.startsWith('AI procjena')?(i.isEstimate?'AI procjena · procijenjena količina':'AI procjena · navedena gramaža'):(i.isEstimate?'Procijenjena količina':'Navedena gramaža')}</small></div><label><input
- type="number"
- inputMode="decimal"
- aria-label={'Grami za '+i.name}
- min={1}
- max={5000}
- step=".1"
- defaultValue={i.grams}
- onChange={e=>{
-  if(e.target.value==='')return;
-
-  const grams=Number(e.target.value);
-
-  if(grams>0&&grams<=5000){
-   setPreview(
-    preview.map(x=>
-     x.id===i.id
-      ?{...x,grams,isEstimate:false}
-      :x
-    )
-   );
-  }
- }}
-/><span>g</span></label><button className="icon-button" aria-label={'Ukloni '+i.name+' iz pregleda'} onClick={()=>setPreview(preview.filter(x=>x.id!==i.id))}><X size={16}/></button></div>)}<MiniTotals items={preview}/><p className="small-note">Približne nutritivne vrijednosti. Količinu možeš ispraviti prije spremanja.</p><button className="primary full" onClick={savePreview}><Check size={19}/>Dodaj u dnevnik</button></section>}<details className="manual-options"><summary>Brzi odabir ili točna deklaracija <span>opcionalno</span></summary><div className="manual-options-body"><div className="section-top"><h3>{search?'Rezultati pretrage':'Često jedeš'}</h3><button className="text-button" onClick={()=>setModal('food')}>Točna deklaracija</button></div><label className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pronađi spremljenu namirnicu…" aria-label="Pretraži spremljene namirnice"/></label><div className="quick-foods">{foodsRanked.slice(0,search?20:7).map(f=><button key={f.id} onClick={()=>{setPreview([...preview,makeItem(f,f.serving,meal,date)]);setAnalyzeMode('local')}}>{f.name}<span>{fmt(f.serving)} g</span><Plus size={14}/></button>)}</div>{!foodsRanked.length&&<p className="muted">Nema spremljene namirnice s tim nazivom. Za običnu hranu samo je opiši iznad i prepusti procjenu AI-ju.</p>}</div></details></Modal>
- <Modal open={modal==='edit'&&!!editing} onClose={close} title={editing?.name||'Uredi stavku'} description="Promijeni količinu ili premjesti hranu. Nutritivne vrijednosti preračunavaju se automatski.">{editing&&<form onSubmit={e=>{e.preventDefault();changeItems(state.items.map(i=>i.id===editing.id?editing:i),'Stavka je ažurirana');close()}}><label className="field">Količina (g)<input
- autoFocus
- required
- type="number"
- inputMode="decimal"
- min={1}
- max={5000}
- step=".1"
- defaultValue={editing.grams}
- onChange={e=>{
-  if(e.target.value==='')return;
-
-  const grams=Number(e.target.value);
-
-  if(grams>0&&grams<=5000){
-   setEditing({
-    ...editing,
-    grams,
-    isEstimate:false
-   });
-  }
- }}
-/></label><label className="field">Obrok<Choice value={editing.meal} onChange={m=>setEditing({...editing,meal:m as MealType})} label="Premjesti u obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/></label><MiniTotals items={[editing]}/><p className="small-note">Izvor: {editing.source}</p><div className="button-row"><button type="button" className="danger" onClick={()=>{changeItems(state.items.filter(i=>i.id!==editing.id),'Stavka je obrisana');close()}}><Trash2 size={18}/>Obriši</button><button className="primary"><Check size={18}/>Spremi</button></div></form>}</Modal>
+ <Modal open={modal==='add'} onClose={close} title="Što si pojeo?" description={`Dodavanje za ${dateLabel(date)}. Napiši obrok svojim riječima — AI će napraviti procjenu.`}><Choice value={meal} onChange={m=>{const next=m as MealType;setMeal(next);setPreview(p=>p.map(i=>({...i,meal:next})))}} label="Obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/><textarea autoFocus rows={3} maxLength={2000} value={input} onChange={e=>setInput(e.target.value)} placeholder="npr. 3 punjene paprike i oko 60 g kruha" aria-label="Opis obroka"/><button className="primary full" disabled={busy||!input.trim()} onClick={()=>void analyze()}>{busy?<LoaderCircle className="spin" size={18}/>:<Sparkles size={18}/>} {busy?'Procjenjujem obrok…':aiReady&&(user||anonymousAi)?'Procijeni s AI':'Analiziraj'}</button><p className="small-note">{aiReady&&online&&(user||anonymousAi)?'AI procjenjuje i hranu koja nije u lokalnoj bazi. Ako gramaža nije navedena, koristi tipičnu porciju i označava procjenu.':!online?'Izvanmrežno si. AI procjena treba internet; poznate namirnice možeš privremeno analizirati lokalno.':aiReady&&!user&&!anonymousAi?'AI je povezan, ali za korištenje se trebaš prijaviti.':'AI još nije povezan. Postavi OPENAI_API_KEY za automatsku procjenu bilo kojeg prepoznatljivog jela.'}</p>{unknown.length>0&&<div className="notice" role="alert">Nisam siguran za: {unknown.join(', ')}. Opiši taj dio malo jasnije (npr. vrstu hrane, broj komada ili veličinu porcije) i pokušaj ponovno.</div>}{preview.length>0&&<section className="preview-section"><h3>Procijenjeni obrok <span className="small-pill">{analyzeMode==='ai'?'AI PROCJENA':'BRZI ODABIR'}</span></h3>{preview.map(i=><div className="preview-row" key={i.id}><div><b>{i.name}</b><small>{fmt(nutrition(i).calories)} kcal · {i.source.startsWith('AI procjena')?(i.isEstimate?'AI procjena · procijenjena količina':'AI procjena · navedena gramaža'):(i.isEstimate?'Procijenjena količina':'Navedena gramaža')}</small></div><label><input type="number" inputMode="decimal" aria-label={'Grami za '+i.name} min={1} max={5000} step=".1" defaultValue={i.grams} onChange={e=>{if(e.target.value==='')return;const grams=Number(e.target.value);if(grams>0&&grams<=5000)setPreview(preview.map(x=>x.id===i.id?{...x,grams,isEstimate:false}:x))}}/><span>g</span></label><button className="icon-button" aria-label={'Ukloni '+i.name+' iz pregleda'} onClick={()=>setPreview(preview.filter(x=>x.id!==i.id))}><X size={16}/></button></div>)}<MiniTotals items={preview}/><p className="small-note">Približne nutritivne vrijednosti. Količinu možeš ispraviti prije spremanja.</p><button className="primary full" onClick={savePreview}><Check size={19}/>Dodaj u dnevnik</button></section>}<details className="manual-options"><summary>Brzi odabir ili točna deklaracija <span>opcionalno</span></summary><div className="manual-options-body"><div className="section-top"><h3>{search?'Rezultati pretrage':'Često jedeš'}</h3><button className="text-button" onClick={()=>setModal('food')}>Točna deklaracija</button></div><label className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pronađi spremljenu namirnicu…" aria-label="Pretraži spremljene namirnice"/></label><div className="quick-foods">{foodsRanked.slice(0,search?20:7).map(f=><button key={f.id} onClick={()=>{setPreview([...preview,makeItem(f,f.serving,meal,date)]);setAnalyzeMode('local')}}>{f.name}<span>{fmt(f.serving)} g</span><Plus size={14}/></button>)}</div>{!foodsRanked.length&&<p className="muted">Nema spremljene namirnice s tim nazivom. Za običnu hranu samo je opiši iznad i prepusti procjenu AI-ju.</p>}</div></details></Modal>
+ <Modal open={modal==='edit'&&!!editing} onClose={close} title={editing?.name||'Uredi stavku'} description="Promijeni količinu ili premjesti hranu. Nutritivne vrijednosti preračunavaju se automatski.">{editing&&<form onSubmit={e=>{e.preventDefault();changeItems(state.items.map(i=>i.id===editing.id?editing:i),'Stavka je ažurirana');close()}}><label className="field">Količina (g)<input key={editing.id} autoFocus required type="number" inputMode="decimal" min={1} max={5000} step=".1" defaultValue={editing.grams} onChange={e=>{if(e.target.value==='')return;const grams=Number(e.target.value);if(grams>0&&grams<=5000)setEditing({...editing,grams,isEstimate:false})}}/></label><label className="field">Obrok<Choice value={editing.meal} onChange={m=>setEditing({...editing,meal:m as MealType})} label="Premjesti u obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/></label><MiniTotals items={[editing]}/><p className="small-note">Izvor: {editing.source}</p><div className="button-row"><button type="button" className="danger" onClick={()=>{changeItems(state.items.filter(i=>i.id!==editing.id),'Stavka je obrisana');close()}}><Trash2 size={18}/>Obriši</button><button className="primary"><Check size={18}/>Spremi</button></div></form>}</Modal>
  <Modal open={modal==='favorite'} onClose={close} title="Spremi omiljeni obrok" description={`Sačuvaj ${t(meal).toLowerCase()} za sljedeći put.`}><form onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);const items=dayItems.filter(i=>i.meal===meal);if(!items.length)return;update(s=>({...s,favorites:[...s.favorites,{id:uid(),name:String(data.get('name')),items}]}));toast.success('Obrok je u omiljenima');close()}}><label className="field">Naziv obroka<input required name="name" maxLength={100} defaultValue={'Moj '+t(meal).toLowerCase()}/></label><MiniTotals items={dayItems.filter(i=>i.meal===meal)}/><button className="primary full"><Heart size={18}/>Spremi obrok</button></form></Modal>
  <Modal open={modal==='weight'} onClose={close} title="Zabilježi težinu" description="Prati trend kroz vrijeme. Jedan zapis po danu."><form onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget),date=String(d.get('date')),kg=Number(d.get('kg'));update(s=>({...s,weights:[...s.weights.filter(w=>w.date!==date),{date,kg}]}));toast.success('Težina spremljena');close()}}><label className="field">Datum<input type="date" name="date" required defaultValue={date}/></label><label className="field">Težina (kg)<input type="number" required name="kg" min={35} max={300} step=".1" defaultValue={state.weights.find(w=>w.date===date)?.kg||state.profile.weight}/></label><button className="primary full"><Check size={18}/>Spremi težinu</button></form></Modal>
  <Modal open={modal==='target'} onClose={close} title="Cilj za ovaj dan" description={`Vrijedi samo za ${dateLabel(date)}. Zadani cilj mijenjaš u profilu.`}>{dailyTarget&&<form onSubmit={e=>{e.preventDefault();const parsed=targetSchema.safeParse(dailyTarget);if(!parsed.success){toast.error('Provjeri vrijednosti ciljeva.');return}update(s=>({...s,targets:{...s.targets,[date]:parsed.data}}));toast.success('Dnevni cilj spremljen');close()}}><div className="form-grid">{macros.map(k=><label key={k} className="field">{t(k)}<input type="number" required min={k==='calories'?800:0} max={k==='calories'?8000:k==='carbs'?1200:500} value={dailyTarget[k]} onChange={e=>setDailyTarget({...dailyTarget,[k]:Number(e.target.value)})}/></label>)}</div><button className="primary full">Spremi dnevni cilj</button><button className="text-button" type="button" onClick={()=>{update(s=>{const targets={...s.targets};delete targets[date];return {...s,targets}});close()}}>Vrati zadani cilj</button></form>}</Modal>
  <Modal open={modal==='food'} onClose={close} title="Tvoja namirnica" description="Prepiši nutritivne vrijednosti s deklaracije na 100 g. Spremit ćemo ih za buduće unose."><form onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget);const f=foodSchema.parse({id:uid(),name:String(d.get('name')),brand:String(d.get('brand')),aliases:[norm(String(d.get('name')))],serving:Number(d.get('serving')),calories:Number(d.get('calories')),protein:Number(d.get('protein')),carbs:Number(d.get('carbs')),fat:Number(d.get('fat')),fiber:0,source:'Deklaracija koju je unio korisnik',verified:true});update(s=>({...s,foods:[...s.foods,f]}));toast.success('Namirnica spremljena');setPreview([makeItem(f,f.serving,meal,date)]);setUnknown([]);setModal('add')}}><label className="field">Naziv proizvoda<input name="name" required maxLength={150} placeholder="npr. Hydrolysed Whey"/></label><label className="field">Proizvođač<input name="brand" maxLength={100} placeholder="npr. MyProtein"/></label><div className="form-grid">{macros.map(k=><label className="field" key={k}>{t(k)} / 100 g<input name={k} type="number" min={0} max={k==='calories'?1000:100} step=".1" required/></label>)}</div><label className="field">Uobičajena porcija (g)<input required type="number" name="serving" min={1} max={5000} defaultValue={30}/></label><button className="primary full">Spremi i pripremi unos</button></form></Modal>
  <Modal open={modal==='login'} onClose={close} title="Tvoj dnevnik, svugdje." description="Prijavi se za spremanje i sinkronizaciju među uređajima.">{cloudReady()?<><Choice value={loginMode} onChange={setLoginMode} label="Način prijave" options={[{value:'login',label:'Prijava lozinkom'},{value:'signup',label:'Novi račun'},{value:'magic',label:'Prijava e-mail poveznicom'}]}/><form onSubmit={async e=>{e.preventDefault();setBusy(true);setAuthMessage('');const d=new FormData(e.currentTarget);try{if(loginMode==='magic'){await authRequest('otp?redirect_to='+encodeURIComponent(location.origin),{email:d.get('email'),create_user:true});setAuthMessage('Provjeri e-mail i otvori poveznicu za prijavu.')}else if(loginMode==='signup'){await authRequest('signup',{email:d.get('email'),password:d.get('password')});setAuthMessage('Račun je kreiran. Ako je potvrda uključena, provjeri e-mail.')}else{await authRequest('token?grant_type=password',{email:d.get('email'),password:d.get('password')});setModal('');toast.success('Prijava je uspjela')}}catch(e){setAuthMessage((e as Error).message)}finally{setBusy(false)}}}><label className="field">E-mail<input type="email" name="email" required autoComplete="email"/></label>{loginMode!=='magic'&&<label className="field">Lozinka<input type="password" name="password" required minLength={8} autoComplete={loginMode==='signup'?'new-password':'current-password'}/></label>}<button className="primary full" disabled={busy}>{busy?'Pričekaj…':loginMode==='magic'?'Pošalji poveznicu':loginMode==='signup'?'Kreiraj račun':'Prijavi se'}</button></form>{authMessage&&<p role="status">{authMessage}</p>}</>:<div className="notice">Prijava još nije povezana. Za sada možeš koristiti lokalni dnevnik. Upute za Supabase dolaze s projektom.</div>}</Modal>
- <Modal open={modal==='start'} onClose={close} title="Tvoj novi početak" description="Demo obroci će se ukloniti. Profil možeš prilagoditi prije početka."><ProfileForm value={state.profile} onboarding onSave={p=>{update(()=>({...initialState(false),profile:p,onboarded:true}));setModal('');toast.success('Tvoj plan je spreman!',{action:{label:t('undo'),onClick:()=>update(()=>state)},duration:10000})}}/></Modal>
+ <Modal open={modal==='start'} onClose={close} title="Postavi svoj profil" description="Unesi svoje podatke za izračun dnevnog cilja."><ProfileForm value={state.profile} onboarding onSave={p=>{update(()=>({...initialState(false),profile:p,onboarded:true}));setModal('');toast.success('Tvoj plan je spreman!',{action:{label:t('undo'),onClick:()=>update(()=>state)},duration:10000})}}/></Modal>
  </>;
 }
