@@ -53,7 +53,7 @@ export async function userState(auth:AuthContext):Promise<State>{
  return stateSchema.parse(d.state);
 }
 
-export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instructions:string,input:unknown):Promise<T>{
+export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instructions:string,input:unknown,options?:{webSearch?:boolean}):Promise<T>{
  const model=configuredAiModel();
  const requestBody:Record<string,unknown>={
   model,
@@ -63,6 +63,7 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
   max_output_tokens:3000,
   text:{format:{type:'json_schema',name:'food_result',strict:true,schema:jsonSchema}}
  };
+ if(options?.webSearch)requestBody.tools=[{type:'web_search',search_context_size:'low'}];
  if(/^(gpt-[56]|o\d)/.test(model))requestBody.reasoning={effort:process.env.OPENAI_REASONING_EFFORT||'low'};
  const r=await fetch('https://api.openai.com/v1/responses',{
   method:'POST',
