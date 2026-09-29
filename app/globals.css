@@ -276,3 +276,157 @@ body{background:var(--bg)}
 .bottom-nav [role=tab]:nth-child(4)[data-state=active] svg{filter:drop-shadow(0 0 5px rgba(255,107,107,.35))}
 .bottom-nav [role=tab]:nth-child(5)[data-state=active] svg{filter:drop-shadow(0 0 5px rgba(244,247,255,.30))}
 @media(max-width:760px){.mini-totals{padding:15px 14px;gap:10px 14px}.calendar-grid{gap:6px}.calendar-grid button{min-height:90px;border-radius:18px;padding:10px 2px 12px}.calendar-grid .calendar-ring{width:50px;height:50px}.calendar-grid .calendar-ring svg{width:50px;height:50px}.calendar-grid .calendar-daynum-svg{font-size:14px}.calendar-grid small{font-size:.63rem}}
+
+
+/* =========================================================
+   KALORA — HISTORY STAT CARDS 2026-09-29
+   Colored metric accents, icons and compact period selector.
+   ========================================================= */
+.history-toolbar{
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.history-range{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px;
+  border:1px solid #1e3047;
+  border-radius:14px;
+  background:#091522;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.history-range button{
+  min-height:36px;
+  padding:0 13px;
+  border-radius:10px;
+  color:#8293a9;
+  font-size:.76rem;
+  font-weight:650;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.history-range button:hover{color:#dbe8f7;background:rgba(255,255,255,.035)}
+.history-range button:active{transform:scale(.97)}
+.history-range button.active{
+  color:#ffe071;
+  background:rgba(255,208,60,.11);
+  box-shadow:inset 0 0 0 1px rgba(255,208,60,.22),0 5px 16px rgba(0,0,0,.16);
+}
+
+.stat-card{
+  --stat-color:#48c6ff;
+  --stat-rgb:72,198,255;
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-height:150px;
+  padding:22px 22px 21px;
+  background:linear-gradient(145deg,#0d1827 0%,#09131f 100%)!important;
+  border-color:rgba(var(--stat-rgb),.20)!important;
+  box-shadow:0 15px 34px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.stat-card.calories{--stat-color:#ff815a;--stat-rgb:255,129,90}
+.stat-card.protein{--stat-color:#35d39a;--stat-rgb:53,211,154}
+.stat-card.carbs{--stat-color:#ffd03c;--stat-rgb:255,208,60}
+.stat-card.fat{--stat-color:#a67cff;--stat-rgb:166,124,255}
+.stat-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:22px;
+  bottom:22px;
+  width:2px;
+  border-radius:0 4px 4px 0;
+  background:var(--stat-color);
+  box-shadow:0 0 14px rgba(var(--stat-rgb),.48);
+  opacity:.9;
+}
+.stat-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  position:relative;
+  z-index:2;
+}
+.stat-card-head>span:first-child{
+  color:#94a3b8;
+  font-size:.8rem;
+  line-height:1.35;
+}
+.stat-icon{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 38px;
+  color:var(--stat-color);
+  border:1px solid rgba(var(--stat-rgb),.24);
+  background:rgba(var(--stat-rgb),.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 8px 22px rgba(var(--stat-rgb),.08);
+}
+.stat-card>b{
+  position:relative;
+  z-index:2;
+  display:block;
+  margin-top:21px;
+  color:#f7fbff;
+  font-size:2.08rem;
+  line-height:1;
+  font-weight:560;
+  letter-spacing:-1.1px;
+}
+.stat-card small{
+  margin-left:7px;
+  color:#8fa0b6;
+  font-size:.82rem;
+  font-weight:450;
+  letter-spacing:0;
+}
+.stat-glow{
+  position:absolute;
+  z-index:0;
+  width:145px;
+  height:145px;
+  right:-58px;
+  top:-62px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(var(--stat-rgb),.14) 0%,rgba(var(--stat-rgb),.055) 38%,transparent 70%);
+  pointer-events:none;
+}
+
+@media(max-width:760px){
+  .history-toolbar{gap:11px!important}
+  .history-range{
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:3px;
+    padding:4px;
+  }
+  .history-range button{padding:0 5px;min-height:35px;font-size:.69rem}
+  .stats-grid{gap:11px!important}
+  .stat-card{
+    min-height:142px;
+    padding:17px 15px 16px!important;
+    border-radius:19px!important;
+  }
+  .stat-card::before{top:18px;bottom:18px}
+  .stat-card-head{align-items:flex-start;gap:8px}
+  .stat-card-head>span:first-child{font-size:.69rem!important;max-width:calc(100% - 39px)}
+  .stat-icon{width:34px;height:34px;flex-basis:34px;border-radius:11px}
+  .stat-icon svg{width:17px;height:17px}
+  .stat-card>b{font-size:1.8rem!important;margin-top:23px!important;letter-spacing:-.8px}
+  .stat-card small{font-size:.73rem;margin-left:5px}
+  .stat-glow{width:118px;height:118px;right:-48px;top:-48px}
+}
+
+@media(max-width:370px){
+  .history-range button{font-size:.64rem}
+  .stat-card{padding-left:13px!important;padding-right:13px!important}
+  .stat-card-head>span:first-child{font-size:.65rem!important}
+  .stat-icon{width:31px;height:31px;flex-basis:31px}
+  .stat-card>b{font-size:1.63rem!important}
+}
