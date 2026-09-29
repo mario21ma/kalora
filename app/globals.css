@@ -452,3 +452,6 @@ body{background:var(--bg)}
 .legal-document code{font-size:.82rem;padding:2px 6px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
 .legal-actions{display:flex;margin-top:30px}.legal-actions .primary{text-decoration:none;color:var(--surface)}
 @media(max-width:760px){.legal-page{padding-left:14px;padding-right:14px}.legal-document{padding:26px 20px;border-radius:20px}.legal-document h1{font-size:1.9rem}.legal-lead{font-size:.9rem}.legal-document section p,.legal-document li{font-size:.84rem}.legal-actions .primary{width:100%;justify-content:center}}
+
+/* Mobile: profil je dostupan u donjoj navigaciji, zato skrivamo dupli prečac u headeru. */
+@media(max-width:760px){.profile-shortcut{display:none!important}}
