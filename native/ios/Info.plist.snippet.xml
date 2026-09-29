@@ -1,0 +1,3 @@
+<!-- Add inside the main <dict> of ios/App/App/Info.plist after `pnpm ios:add`. -->
+<key>NSCameraUsageDescription</key>
+<string>Kalora koristi kameru samo za skeniranje barkoda proizvoda.</string>

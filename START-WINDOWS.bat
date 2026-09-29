@@ -7,7 +7,7 @@ if errorlevel 1 (
  exit /b 1
 )
 if not exist node_modules (
- call npx --yes pnpm@11.25.0 install --frozen-lockfile
+ call npx --yes pnpm@11.25.0 install --no-frozen-lockfile
  if errorlevel 1 (
   echo Instalacija nije uspjela. Provjeri internetsku vezu i verziju Node.js.
   pause

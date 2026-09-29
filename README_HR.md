@@ -9,7 +9,7 @@ Funkcionalna PWA aplikacija na hrvatskom, s Next.jsom, Reactom, TypeScriptom, Ta
 3. Dvaput klikni `START-WINDOWS.bat` ili u PowerShellu u toj mapi pokreni:
 
 ```powershell
-npx --yes pnpm@11.25.0 install --frozen-lockfile
+npx --yes pnpm@11.25.0 install --no-frozen-lockfile
 npx --yes pnpm@11.25.0 dev
 ```
 
@@ -82,7 +82,7 @@ ChatGPT pretplata i OpenAI API naplata su odvojeni. Ova PWA koristi server-side 
 Nije izvršena objava u tuđi Vercel račun i paket nema javni URL. Za objavu:
 
 1. Postavi projekt u svoj Git repozitorij i uvezi ga u Vercel kao **Next.js** projekt, ili iz mape projekta pokreni službeni Vercel CLI i prijavi se.
-2. Install: `pnpm install --frozen-lockfile`; Build: `pnpm build`. Vercel postavke su u `vercel.json`.
+2. Install: `pnpm install --no-frozen-lockfile`; Build: `pnpm build`. Vercel postavke su u `vercel.json`.
 3. Postavi varijable iz `.env.example` kroz Vercel Environment Variables. Javni Supabase parametri trebaju biti prisutni u trenutku builda, a OpenAI ključ samo na poslužitelju.
 4. Objavi, dodaj dobivenu HTTPS adresu u Supabase Site URL i Redirect URLs, pa provjeri e-mail potvrdu i Magic Link.
 5. U Safariju na iPhoneu otvori HTTPS adresu → Dijeli → Dodaj na početni zaslon. Android koristi izbornik instalacije preglednika.
@@ -119,3 +119,11 @@ npx --yes pnpm@11.25.0 typecheck
 ```
 
 Tehničke reference: https://developers.openai.com/api/docs/guides/structured-outputs i https://supabase.com/docs/guides/auth.
+
+## Privatnost, lokalni barkod skener i iOS priprema
+
+- Politika privatnosti dostupna je na `/privacy` i iz ekrana prijave/profila.
+- Postavi `NEXT_PUBLIC_SUPPORT_EMAIL` prije javne objave kako bi politika prikazivala stvarni kontakt za privatnost.
+- ZXing se sada učitava kao npm ovisnost `@zxing/browser@0.2.1` i bundlea se s aplikacijom; više se ne izvršava JavaScript iz `unpkg.com` tijekom skeniranja.
+- Capacitor 8.5.2 konfiguracija je u `capacitor.config.ts`; detalji su u `IOS_SETUP.md`.
+- Budući da je lockfile u ovom paketu nastao prije dodavanja novih npm ovisnosti, Vercel privremeno koristi `pnpm install --no-frozen-lockfile`. Nakon prvog lokalnog `pnpm install` preporučuje se commitati osvježeni `pnpm-lock.yaml` i vratiti `--frozen-lockfile`.

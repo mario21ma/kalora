@@ -432,3 +432,23 @@ body{background:var(--bg)}
 }
 
 @media(max-width:760px){.history-meals-accordion{gap:8px;margin-top:14px}.history-meal{border-radius:15px}.history-meal-toggle{min-height:60px;padding:10px 12px}.history-meal-icon{width:36px;height:36px;flex-basis:36px;border-radius:11px}.history-meal-title b{font-size:.88rem}.history-meal-summary>b{font-size:.84rem}.history-meal-items{padding:0 12px 3px}.history-meal-items>button{padding:12px 1px;font-size:.82rem}}
+
+/* =========================================================
+   KALORA — PRIVACY / LEGAL
+   ========================================================= */
+.legal-links{margin:18px 0 0;text-align:center;font-size:.78rem}
+.legal-links a,.legal-document a{color:var(--green);text-decoration:none}
+.legal-links a:hover,.legal-document a:hover{text-decoration:underline}
+.legal-button{display:inline-flex;width:auto;text-decoration:none!important;margin-top:4px}
+.legal-page{min-height:100dvh;padding:calc(36px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom));background:var(--bg);color:var(--text)}
+.legal-document{width:min(820px,100%);margin:0 auto;padding:36px 40px;border:1px solid var(--line);border-radius:24px;background:var(--surface);box-shadow:0 20px 55px rgba(0,0,0,.18)}
+.legal-brand{font-size:1.65rem;font-weight:750;letter-spacing:-1px;margin-bottom:28px}.legal-brand span{color:var(--green);margin-left:2px}
+.legal-document h1{font-size:2.35rem;line-height:1.08;letter-spacing:-1.4px;margin:5px 0 12px}
+.legal-lead{font-size:1rem;color:var(--muted);line-height:1.7;max-width:680px}
+.legal-document section{padding-top:24px;margin-top:24px;border-top:1px solid var(--line)}
+.legal-document section h2{font-size:1.1rem;margin:0 0 10px}
+.legal-document section p,.legal-document li{font-size:.91rem;line-height:1.75;color:color-mix(in srgb,var(--text) 84%,var(--muted))}
+.legal-document ul{margin:10px 0 0;padding-left:22px}.legal-document li+li{margin-top:7px}
+.legal-document code{font-size:.82rem;padding:2px 6px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.legal-actions{display:flex;margin-top:30px}.legal-actions .primary{text-decoration:none;color:var(--surface)}
+@media(max-width:760px){.legal-page{padding-left:14px;padding-right:14px}.legal-document{padding:26px 20px;border-radius:20px}.legal-document h1{font-size:1.9rem}.legal-lead{font-size:.9rem}.legal-document section p,.legal-document li{font-size:.84rem}.legal-actions .primary{width:100%;justify-content:center}}
