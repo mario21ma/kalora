@@ -168,3 +168,44 @@ body{background:var(--bg)}
   .profile-grid{align-items:start}
   .profile-grid .right-stack .card{display:block!important}
 }
+
+/* FIX 5 — restore the original History layout on mobile. */
+.ring-label .ring-percent{
+  display:block;
+  margin-top:1px;
+  font-size:.66rem;
+  line-height:1.15;
+  font-style:normal;
+  font-weight:700;
+  letter-spacing:.01em;
+  color:#65ccff;
+}
+@media(max-width:760px){
+  /* The redesigned diary screen is intentionally disabled; History uses the original statistics/calendar layout. */
+  .mobile-diary{display:none!important}
+  .history-toolbar{display:flex!important;align-items:flex-start!important;flex-direction:column!important;gap:10px!important}
+  .stats-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;margin-bottom:18px!important}
+  .history-grid{display:grid!important;grid-template-columns:1fr!important;gap:18px!important}
+
+  /* Restore the old History page heading/date selector instead of hiding it. */
+  .page-heading.history{display:flex!important;align-items:flex-start!important;flex-direction:column!important;gap:18px!important;margin-bottom:19px!important}
+  .page-heading.history>div:first-child{display:block!important}
+  .page-heading.history h1{font-size:1.65rem!important;letter-spacing:-.8px!important}
+  .page-heading.history .eyebrow{display:block!important;font-size:.62rem!important;letter-spacing:1.2px!important;margin-bottom:7px!important}
+  .page-heading.history .date-switch{
+    width:auto!important;
+    align-self:flex-start!important;
+    display:flex!important;
+    grid-template-columns:none!important;
+    padding:0!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    margin-left:-10px!important;
+    backdrop-filter:none!important;
+  }
+  .page-heading.history .date-switch label{font-size:.78rem!important}
+  .page-heading.history .date-switch .icon-button{width:34px!important;height:32px!important}
+
+  .ring-label .ring-percent{font-size:.62rem;margin-top:0}
+}
