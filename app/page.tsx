@@ -7,7 +7,7 @@ import {Toaster,toast} from 'sonner';
 import {Modal,Choice} from '@/components/controls';
 import {ProfileForm,exportData} from '@/components/profile';
 import {useDiary} from '@/lib/use-diary';
-import {aiCall,authRequest,cloudReady,deleteAccount,signOut} from '@/lib/cloud';
+import {aiCall,authRequest,cloudReady,signOut} from '@/lib/cloud';
 import {State,Item,Food,MealType,Nutrients,baseFoods,mealTypes,macros,dateKey,dayOffset,makeItem,parseLocal,sum,nutrition,fmt,uid,norm,stateSchema,foodSchema,targetSchema,initialState} from '@/lib/domain';
 import {t} from '@/lib/i18n';
 const mealIcons={breakfast:Sunrise,lunch:Sun,dinner:Sunset,snack:Moon};
@@ -20,7 +20,7 @@ function Macro({name,value,target}:{name:'protein'|'carbs'|'fat',value:number,ta
 function MiniTotals({items}:{items:Item[]}){const total=sum(items);return <div className="mini-totals"><b>{fmt(total.calories)} kcal</b><span>P {fmt(total.protein)} g</span><span>UH {fmt(total.carbs)} g</span><span>M {fmt(total.fat)} g</span></div>}
 export default function App(){
  const {state,user,status,error,setError,update,sync,reloadCloud}=useDiary();
- const [tab,setTab]=useState('today'),[date,setDate]=useState(dateKey()),[modal,setModal]=useState(''),[meal,setMeal]=useState<MealType>(initialMeal()),[input,setInput]=useState(''),[preview,setPreview]=useState<Item[]>([]),[unknown,setUnknown]=useState<string[]>([]),[analyzeMode,setAnalyzeMode]=useState('local'),[busy,setBusy]=useState(false),[aiReady,setAiReady]=useState(false),[anonymousAi,setAnonymousAi]=useState(false),[online,setOnline]=useState(true),[editing,setEditing]=useState<Item|null>(null),[search,setSearch]=useState(''),[theme,setTheme]=useState('system'),[chat,setChat]=useState(''),[range,setRange]=useState('7'),[weightRange,setWeightRange]=useState('30'),[calendarMonth,setCalendarMonth]=useState(dateKey().slice(0,7)),[pending,setPending]=useState<{action:string,itemId?:string|null,grams?:number|null}|null>(null),[loginMode,setLoginMode]=useState('signup'),[authMessage,setAuthMessage]=useState(''),[dailyTarget,setDailyTarget]=useState<Nutrients|null>(null),[swipe,setSwipe]=useState<string|null>(null),[barcodeBusy,setBarcodeBusy]=useState(false),[barcodeError,setBarcodeError]=useState(''),[scannedFood,setScannedFood]=useState<Food|null>(null),[deleteConfirm,setDeleteConfirm]=useState('');
+ const [tab,setTab]=useState('today'),[date,setDate]=useState(dateKey()),[modal,setModal]=useState(''),[meal,setMeal]=useState<MealType>(initialMeal()),[input,setInput]=useState(''),[preview,setPreview]=useState<Item[]>([]),[unknown,setUnknown]=useState<string[]>([]),[analyzeMode,setAnalyzeMode]=useState('local'),[busy,setBusy]=useState(false),[aiReady,setAiReady]=useState(false),[anonymousAi,setAnonymousAi]=useState(false),[online,setOnline]=useState(true),[editing,setEditing]=useState<Item|null>(null),[search,setSearch]=useState(''),[theme,setTheme]=useState('system'),[chat,setChat]=useState(''),[range,setRange]=useState('7'),[weightRange,setWeightRange]=useState('30'),[calendarMonth,setCalendarMonth]=useState(dateKey().slice(0,7)),[pending,setPending]=useState<{action:string,itemId?:string|null,grams?:number|null}|null>(null),[loginMode,setLoginMode]=useState('signup'),[authMessage,setAuthMessage]=useState(''),[dailyTarget,setDailyTarget]=useState<Nutrients|null>(null),[swipe,setSwipe]=useState<string|null>(null),[barcodeBusy,setBarcodeBusy]=useState(false),[barcodeError,setBarcodeError]=useState(''),[scannedFood,setScannedFood]=useState<Food|null>(null);
  const gesture=useRef<{id:string,x:number,y:number}|null>(null),bottom=useRef<HTMLDivElement>(null),previousToday=useRef(dateKey()),barcodeVideo=useRef<HTMLVideoElement>(null),scannerControls=useRef<{stop:()=>void}|null>(null);
  useEffect(()=>{fetch('/api/status').then(r=>r.json()).then(d=>{setAiReady(!!d.ai);setAnonymousAi(d.anonymous!==false)}).catch(()=>{});setTheme(localStorage.getItem('kalora-theme')||'system');const on=()=>setOnline(navigator.onLine);on();window.addEventListener('online',on);window.addEventListener('offline',on);if('serviceWorker' in navigator&&process.env.NODE_ENV==='production')navigator.serviceWorker.register('/sw.js').catch(()=>{});const timer=setInterval(()=>{const today=dateKey();if(previousToday.current!==today){const old=previousToday.current;previousToday.current=today;setDate(d=>d===old?today:d)}},60000);return()=>{clearInterval(timer);window.removeEventListener('online',on);window.removeEventListener('offline',on)}},[]);
  useEffect(()=>{const media=matchMedia('(prefers-color-scheme: dark)');const apply=()=>document.documentElement.classList.toggle('dark',theme==='dark'||(theme==='system'&&media.matches));apply();media.addEventListener('change',apply);localStorage.setItem('kalora-theme',theme);return()=>media.removeEventListener('change',apply)},[theme]);
@@ -55,7 +55,344 @@ export default function App(){
  const filteredWeights=state.weights.filter(w=>w.date>=dayOffset(date,1-Number(weightRange))&&w.date<=date).sort((a,b)=>a.date.localeCompare(b.date));
  const monthFirst=calendarMonth+'-01',monthCount=new Date(Number(calendarMonth.slice(0,4)),Number(calendarMonth.slice(5)),0).getDate(),monthPad=(new Date(monthFirst+'T12:00:00').getDay()+6)%7;
  const screenHeading=tab==='today'?'Tvoj dan, u ravnoteži.':tab==='history'?'Mali koraci. Velika slika.':tab==='ai'?'Pričaj o svom danu.':'Tvoj plan. Tvoja pravila.';
- return <><Toaster position="top-center" richColors/><Tabs value={tab} onValueChange={setTab} className="app-shell"><aside className="sidebar"><a className="brand" href="/" aria-label="Kalora početna"><span className="brand-symbol">k<span>•</span></span>kalora<span className="brand-period">.</span></a><div className="sidebar-intro">TVOJ PROSTOR ZA RAVNOTEŽU</div><TabsList className="side-tabs">{[['today','Danas',Home],['history','Povijest',CalendarDays],['ai','AI asistent',Sparkles],['profile','Profil',UserRound]].map(([value,label,Icon])=><TabsTrigger key={String(value)} value={String(value)}><Icon size={21}/>{String(label)}{value==='ai'&&<span className="small-pill">BETA</span>}</TabsTrigger>)}</TabsList><button className="primary sidebar-add" onClick={()=>openAdd()}><Plus size={20}/>Dodaj obrok</button><div className="sidebar-bottom"><div className="small-ring"><Activity size={24}/></div><p>Jedan obrok po jedan.<br/><span>Svaki zapis se računa.</span></p><button className="user-card" onClick={()=>setTab('profile')}><span className="avatar">{state.profile.name[0]?.toUpperCase()}</span><div><b>{state.profile.name}</b><small>{user?'Moj račun':'Lokalni dnevnik'}</small></div><Settings2 size={18}/></button></div></aside>
+ 
+return <><style>{`
+.kalora-vivid{
+  --line: rgba(148, 163, 184, .18);
+  --line-strong: rgba(96, 165, 250, .32);
+  --surface: rgba(7, 15, 32, .72);
+  --surface-2: rgba(10, 22, 43, .84);
+  --surface-3: rgba(14, 28, 52, .95);
+  --text-1: #eef6ff;
+  --text-2: #bdd0ea;
+  --accent-1: #7c5cff;
+  --accent-2: #28d7ff;
+  --accent-3: #23e7ae;
+  --accent-warm: #ffb84d;
+  color: var(--text-1);
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(34,211,238,.24), transparent 26%),
+    radial-gradient(circle at 100% 0%, rgba(124,92,255,.22), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(59,130,246,.16), transparent 34%),
+    linear-gradient(180deg, #030814 0%, #071223 42%, #09162a 100%);
+}
+.kalora-vivid::before,
+.kalora-vivid::after{
+  content:"";
+  position: fixed;
+  inset: auto;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 999px;
+  filter: blur(70px);
+  opacity: .24;
+  z-index: 0;
+  pointer-events: none;
+  animation: kaloraFloat 16s ease-in-out infinite;
+}
+.kalora-vivid::before{top: -6rem; right: -8rem; background: linear-gradient(135deg, #7c5cff, #28d7ff);}
+.kalora-vivid::after{bottom: -8rem; left: -7rem; background: linear-gradient(135deg, #23e7ae, #7c5cff); animation-delay: -8s;}
+.kalora-vivid > *{position: relative; z-index: 1;}
+.kalora-vivid .sidebar,
+.kalora-vivid .workspace,
+.kalora-vivid .card,
+.kalora-vivid .ai-card,
+.kalora-vivid .weekly-card,
+.kalora-vivid .favorites-card,
+.kalora-vivid .calendar-card,
+.kalora-vivid .weight-chart-card,
+.kalora-vivid .chat-card,
+.kalora-vivid .profile-grid section,
+.kalora-vivid .notice,
+.kalora-vivid .demo-banner,
+.kalora-vivid .bottom-nav,
+.kalora-vivid .topbar,
+.kalora-vivid .desktop-footer,
+.kalora-vivid .manual-options-body,
+.kalora-vivid .preview-section{
+  background: linear-gradient(180deg, rgba(11,22,42,.90), rgba(8,17,34,.74)) !important;
+  border: 1px solid rgba(126, 151, 255, .16) !important;
+  box-shadow: 0 18px 60px rgba(1, 10, 25, .38), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  backdrop-filter: blur(16px);
+}
+.kalora-vivid .sidebar,
+.kalora-vivid .workspace{overflow: hidden;}
+.kalora-vivid .sidebar{
+  background:
+    radial-gradient(circle at top, rgba(124,92,255,.18), transparent 36%),
+    linear-gradient(180deg, rgba(7,16,33,.96), rgba(6,14,29,.84)) !important;
+}
+.kalora-vivid .brand,
+.kalora-vivid .mobile-brand,
+.kalora-vivid .page-heading h1,
+.kalora-vivid .section-top h2,
+.kalora-vivid .meal-heading b,
+.kalora-vivid .chat-heading,
+.kalora-vivid .user-card b{color:#f8fbff !important;}
+.kalora-vivid .brand,
+.kalora-vivid .mobile-brand{
+  letter-spacing: -.03em;
+  text-shadow: 0 0 18px rgba(40,215,255,.24);
+}
+.kalora-vivid .brand-symbol,
+.kalora-vivid .brand-period,
+.kalora-vivid .mobile-brand span,
+.kalora-vivid .small-pill,
+.kalora-vivid .ai-spark{
+  background: linear-gradient(135deg, #7c5cff, #28d7ff 55%, #23e7ae);
+  color: white !important;
+  box-shadow: 0 10px 24px rgba(36, 211, 238, .22);
+}
+.kalora-vivid .sidebar-intro,
+.kalora-vivid .eyebrow,
+.kalora-vivid .muted,
+.kalora-vivid .small-note,
+.kalora-vivid .card-foot,
+.kalora-vivid .sync-label,
+.kalora-vivid .breadcrumb,
+.kalora-vivid .food-main small,
+.kalora-vivid .favorite-row small,
+.kalora-vivid .weight-records,
+.kalora-vivid .chat-note,
+.kalora-vivid .desktop-footer small,
+.kalora-vivid .desktop-footer p{color: var(--text-2) !important;}
+.kalora-vivid .topbar,
+.kalora-vivid .desktop-footer,
+.kalora-vivid .bottom-nav,
+.kalora-vivid .sidebar,
+.kalora-vivid .workspace,
+.kalora-vivid .card,
+.kalora-vivid .ai-card,
+.kalora-vivid .weekly-card,
+.kalora-vivid .favorites-card,
+.kalora-vivid .calendar-card,
+.kalora-vivid .weight-chart-card,
+.kalora-vivid .chat-card,
+.kalora-vivid .manual-options-body,
+.kalora-vivid .preview-section,
+.kalora-vivid .notice,
+.kalora-vivid .demo-banner{border-radius: 24px !important;}
+.kalora-vivid .topbar,
+.kalora-vivid .desktop-footer,
+.kalora-vivid .bottom-nav{border-radius: 22px !important;}
+.kalora-vivid .card,
+.kalora-vivid .ai-card,
+.kalora-vivid .weekly-card,
+.kalora-vivid .favorites-card,
+.kalora-vivid .calendar-card,
+.kalora-vivid .weight-chart-card,
+.kalora-vivid .chat-card,
+.kalora-vivid .preview-section,
+.kalora-vivid .manual-options-body,
+.kalora-vivid .demo-banner,
+.kalora-vivid .notice{position: relative; overflow: hidden; animation: kaloraRise .55s ease both;}
+.kalora-vivid .card::before,
+.kalora-vivid .ai-card::before,
+.kalora-vivid .weekly-card::before,
+.kalora-vivid .favorites-card::before,
+.kalora-vivid .calendar-card::before,
+.kalora-vivid .weight-chart-card::before,
+.kalora-vivid .chat-card::before,
+.kalora-vivid .preview-section::before,
+.kalora-vivid .manual-options-body::before{
+  content:"";
+  position:absolute;
+  inset:-1px -1px auto -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(40,215,255,.9), rgba(124,92,255,.9), transparent);
+  opacity:.75;
+}
+.kalora-vivid .energy-card{
+  background:
+    radial-gradient(circle at top right, rgba(40,215,255,.16), transparent 26%),
+    radial-gradient(circle at left center, rgba(124,92,255,.18), transparent 34%),
+    linear-gradient(180deg, rgba(10,22,44,.92), rgba(9,18,37,.82)) !important;
+}
+.kalora-vivid .ai-card{
+  background:
+    radial-gradient(circle at top, rgba(124,92,255,.25), transparent 38%),
+    linear-gradient(180deg, rgba(11,24,52,.96), rgba(8,18,35,.90)) !important;
+}
+.kalora-vivid .ai-card h2{font-size: clamp(1.8rem, 2vw, 2.3rem); line-height: 1.02;}
+.kalora-vivid .ai-spark{
+  border-radius: 18px;
+  padding: .8rem;
+  animation: kaloraPulse 3.6s ease-in-out infinite;
+}
+.kalora-vivid .primary,
+.kalora-vivid .sidebar-add,
+.kalora-vivid .mobile-fab,
+.kalora-vivid .upload-button,
+.kalora-vivid .action-confirm button,
+.kalora-vivid .favorite-button{
+  background: linear-gradient(135deg, #7c5cff, #28d7ff 58%, #23e7ae) !important;
+  color: white !important;
+  border: 0 !important;
+  box-shadow: 0 14px 32px rgba(63, 169, 255, .28), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+.kalora-vivid .primary:hover,
+.kalora-vivid .secondary:hover,
+.kalora-vivid .text-button:hover,
+.kalora-vivid .icon-button:hover,
+.kalora-vivid .favorite-row:hover,
+.kalora-vivid .food-row:hover,
+.kalora-vivid .history-day:hover,
+.kalora-vivid .quick-foods button:hover,
+.kalora-vivid .mobile-fab:hover{transform: translateY(-2px) scale(1.01);}
+.kalora-vivid button,
+.kalora-vivid [role="button"],
+.kalora-vivid .food-row,
+.kalora-vivid .favorite-row,
+.kalora-vivid .history-day,
+.kalora-vivid .quick-foods button{transition: transform .22s ease, box-shadow .22s ease, background-color .22s ease, border-color .22s ease, opacity .22s ease;}
+.kalora-vivid .secondary,
+.kalora-vivid .text-button,
+.kalora-vivid .icon-button,
+.kalora-vivid .ai-input,
+.kalora-vivid .date-switch label,
+.kalora-vivid .date-switch button,
+.kalora-vivid .search-field,
+.kalora-vivid textarea,
+.kalora-vivid input,
+.kalora-vivid select,
+.kalora-vivid .user-card,
+.kalora-vivid .chat-suggestions button,
+.kalora-vivid .action-confirm,
+.kalora-vivid .quick-foods button,
+.kalora-vivid .favorite-row,
+.kalora-vivid .food-row,
+.kalora-vivid .history-day,
+.kalora-vivid .meal-items li,
+.kalora-vivid .choice,
+.kalora-vivid .count-pill{
+  background: rgba(12, 24, 49, .72) !important;
+  border: 1px solid rgba(146, 176, 255, .16) !important;
+  color: var(--text-1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.kalora-vivid textarea,
+.kalora-vivid input,
+.kalora-vivid select{border-radius: 16px !important;}
+.kalora-vivid textarea::placeholder,
+.kalora-vivid input::placeholder{color: rgba(189,208,234,.7) !important;}
+.kalora-vivid .text-button,
+.kalora-vivid .icon-button,
+.kalora-vivid .secondary,
+.kalora-vivid .quick-foods button{backdrop-filter: blur(10px);}
+.kalora-vivid .date-switch label,
+.kalora-vivid .sync-label,
+.kalora-vivid .small-pill,
+.kalora-vivid .count-pill,
+.kalora-vivid .energy-stat{
+  border-radius: 999px !important;
+}
+.kalora-vivid .side-tabs [data-state="active"],
+.kalora-vivid .bottom-nav [data-state="active"]{
+  background: linear-gradient(135deg, rgba(124,92,255,.28), rgba(40,215,255,.20)) !important;
+  color: #fff !important;
+  border-color: rgba(136, 183, 255, .28) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 22px rgba(23, 78, 161, .18) !important;
+}
+.kalora-vivid .bottom-nav{
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(136,183,255,.16) !important;
+}
+.kalora-vivid .mobile-fab{
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  animation: kaloraPulse 3.8s ease-in-out infinite;
+}
+.kalora-vivid .avatar,
+.kalora-vivid .weight-icon,
+.kalora-vivid .small-ring{
+  background: linear-gradient(135deg, rgba(124,92,255,.30), rgba(40,215,255,.22)) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 24px rgba(9, 25, 46, .26);
+}
+.kalora-vivid .remaining{font-size: clamp(2.2rem, 3vw, 3.2rem); line-height: 1; letter-spacing: -.04em; color: #fff;}
+.kalora-vivid .remaining span{font-size: .42em; color: var(--text-2);}
+.kalora-vivid .remaining.over{color: #ffb4b4;}
+.kalora-vivid .calorie-ring{position: relative; filter: drop-shadow(0 0 34px rgba(80, 160, 255, .16));}
+.kalora-vivid .ring-track{stroke: rgba(255,255,255,.10); stroke-width: 14;}
+.kalora-vivid .ring-fill{stroke: #53d4ff; stroke-width: 14; stroke-linecap: round; filter: drop-shadow(0 0 8px rgba(40,215,255,.48));}
+.kalora-vivid .ring-label{
+  background: radial-gradient(circle at top, rgba(255,255,255,.05), transparent 54%);
+}
+.kalora-vivid .ring-label strong{font-size: clamp(2rem, 2.8vw, 2.8rem); color: #fff;}
+.kalora-vivid .ring-label span{color: var(--text-2);}
+.kalora-vivid .macro-grid{gap: 1rem;}
+.kalora-vivid .macro.protein i,
+.kalora-vivid .macro-label .protein i{background: #24e7c2 !important; box-shadow: 0 0 0 6px rgba(36,231,194,.1);}
+.kalora-vivid .macro.carbs i,
+.kalora-vivid .macro-label .carbs i{background: #55b7ff !important; box-shadow: 0 0 0 6px rgba(85,183,255,.1);}
+.kalora-vivid .macro.fat i,
+.kalora-vivid .macro-label .fat i{background: #ffba5a !important; box-shadow: 0 0 0 6px rgba(255,186,90,.1);}
+.kalora-vivid .macro-progress [data-slot="progress-indicator"],
+.kalora-vivid .macro-progress > div{background: linear-gradient(90deg, #7c5cff, #28d7ff 55%, #23e7ae) !important;}
+.kalora-vivid .bar-track{background: rgba(255,255,255,.06) !important; border-radius: 999px; overflow: hidden;}
+.kalora-vivid .bar-track > span,
+.kalora-vivid .bar-track > div,
+.kalora-vivid .week-chart [style*="height"]{background: linear-gradient(180deg, #6d7cff, #28d7ff 60%, #23e7ae) !important; border-radius: 999px 999px 10px 10px; box-shadow: 0 10px 20px rgba(40,215,255,.16);}
+.kalora-vivid .food-dot{background: linear-gradient(135deg, #7c5cff, #28d7ff) !important; box-shadow: 0 0 0 6px rgba(124,92,255,.1);}
+.kalora-vivid .food-kcal,
+.kalora-vivid .favorite-row strong,
+.kalora-vivid .section-top h2 span,
+.kalora-vivid .history-meal,
+.kalora-vivid .weight-records strong{color: #fff !important;}
+.kalora-vivid .favorite-button,
+.kalora-vivid .icon-button{border-radius: 14px !important;}
+.kalora-vivid .favorite-row,
+.kalora-vivid .food-row,
+.kalora-vivid .history-day,
+.kalora-vivid .meal-items li,
+.kalora-vivid .chat-suggestions button,
+.kalora-vivid .quick-foods button{border-radius: 18px !important;}
+.kalora-vivid .leaf-dot{background: linear-gradient(135deg, #23e7ae, #28d7ff) !important; box-shadow: 0 0 0 5px rgba(35,231,174,.12);}
+.kalora-vivid .notice,
+.kalora-vivid .demo-banner{background: linear-gradient(180deg, rgba(23,36,62,.92), rgba(12,22,42,.82)) !important;}
+.kalora-vivid .demo-banner button,
+.kalora-vivid .notice button{color: #fff !important;}
+.kalora-vivid .history-day.today,
+.kalora-vivid .calendar-grid .active{border-color: rgba(40,215,255,.4) !important; box-shadow: 0 0 0 1px rgba(40,215,255,.22), 0 18px 30px rgba(10,23,44,.16);}
+.kalora-vivid .weight-chart,
+.kalora-vivid .week-chart{position: relative;}
+.kalora-vivid .weight-chart::after,
+.kalora-vivid .week-chart::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(40,215,255,0), rgba(40,215,255,.08));
+  pointer-events:none;
+}
+.kalora-vivid .desktop-footer span,
+.kalora-vivid .desktop-footer span span{color:#fff !important;}
+.kalora-vivid .desktop-footer{margin-top: 1rem;}
+.kalora-vivid .preview-row,
+.kalora-vivid .button-row,
+.kalora-vivid .history-toolbar{gap: .8rem;}
+@media (max-width: 920px){
+  .kalora-vivid .workspace,
+  .kalora-vivid .sidebar{border-radius: 24px !important;}
+  .kalora-vivid .page-heading h1{font-size: clamp(1.75rem, 8vw, 2.5rem);}
+  .kalora-vivid .mobile-fab{bottom: 5.4rem;}
+}
+@keyframes kaloraFloat{
+  0%,100%{transform: translate3d(0,0,0) scale(1);}
+  50%{transform: translate3d(0, 18px, 0) scale(1.06);}
+}
+@keyframes kaloraRise{
+  from{opacity:0; transform: translateY(12px);}
+  to{opacity:1; transform: translateY(0);}
+}
+@keyframes kaloraPulse{
+  0%,100%{transform: scale(1); box-shadow: 0 14px 32px rgba(63,169,255,.22), inset 0 1px 0 rgba(255,255,255,.28);}
+  50%{transform: scale(1.02); box-shadow: 0 18px 40px rgba(63,169,255,.34), inset 0 1px 0 rgba(255,255,255,.36);}
+}
+`}</style><Toaster position="top-center" richColors/><Tabs value={tab} onValueChange={setTab} className="app-shell kalora-vivid"><aside className="sidebar"><a className="brand" href="/" aria-label="Kalora početna"><span className="brand-symbol">k<span>•</span></span>kalora<span className="brand-period">.</span></a><div className="sidebar-intro">TVOJ PROSTOR ZA RAVNOTEŽU</div><TabsList className="side-tabs">{[['today','Danas',Home],['history','Povijest',CalendarDays],['ai','AI asistent',Sparkles],['profile','Profil',UserRound]].map(([value,label,Icon])=><TabsTrigger key={String(value)} value={String(value)}><Icon size={21}/>{String(label)}{value==='ai'&&<span className="small-pill">BETA</span>}</TabsTrigger>)}</TabsList><button className="primary sidebar-add" onClick={()=>openAdd()}><Plus size={20}/>Dodaj obrok</button><div className="sidebar-bottom"><div className="small-ring"><Activity size={24}/></div><p>Jedan obrok po jedan.<br/><span>Svaki zapis se računa.</span></p><button className="user-card" onClick={()=>setTab('profile')}><span className="avatar">{state.profile.name[0]?.toUpperCase()}</span><div><b>{state.profile.name}</b><small>{user?'Moj račun':'Lokalni dnevnik'}</small></div><Settings2 size={18}/></button></div></aside>
  <div className="workspace"><header className="topbar"><span className="mobile-brand">kalora<span>•</span></span><div className="breadcrumb">Moj dnevnik <span>/</span> {tab==='today'?'Danas':tab==='history'?'Povijest':tab==='ai'?'AI asistent':'Profil'}</div><div className="top-actions"><span className="sync-label">{online?<Cloud size={15}/>:<WifiOff size={15}/>} {online?status:'Izvanmrežno'}</span><button className="avatar" aria-label="Otvori profil" onClick={()=>setTab('profile')}>{state.profile.name[0]?.toUpperCase()}</button></div></header>
  <main className="main-content"><div className="page-heading"><div><p className="eyebrow">{tab==='today'?`BOK, ${state.profile.name.toUpperCase()}`:tab==='history'?'TVOJ NAPREDAK':tab==='ai'?'AI ASISTENT':'OSOBNE POSTAVKE'}</p><h1>{screenHeading}</h1></div><div className="date-switch"><button className="icon-button" aria-label="Prethodni dan" onClick={()=>setDate(dayOffset(date,-1))}><ChevronLeft size={18}/></button><label><CalendarDays size={17}/><span>{date===dateKey()?'Danas, ':''}{dateLabel(date)}</span><input aria-label="Odaberi datum" type="date" value={date} onChange={e=>e.target.value&&setDate(e.target.value)}/></label><button className="icon-button" aria-label="Sljedeći dan" onClick={()=>setDate(dayOffset(date,1))}><ChevronRight size={18}/></button></div></div>
  {error&&<div className="notice error" role="alert"><span>{error}</span><button onClick={()=>exportData(state)}>Izvezi kopiju</button>{user&&<button onClick={()=>void reloadCloud()}>Učitaj oblak</button>}<button aria-label="Zatvori poruku" onClick={()=>setError('')}><X size={16}/></button></div>}
@@ -66,16 +403,15 @@ export default function App(){
  <aside className="right-stack"><section className="card weekly-card"><div className="section-top"><h2>Tvoj tjedan</h2><button className="icon-button" aria-label="Otvori povijest" onClick={()=>setTab('history')}><ArrowUpRight size={19}/></button></div><p className="muted">Svaki dan je novi početak.</p><div className="week-chart">{chartDays.map(d=>{const v=sum(state.items.filter(i=>i.date===d)).calories;return <button key={d} aria-label={`${dateLabel(d)}: ${v?fmt(v)+' kcal':'nema unosa'}`} className={d===date?'selected':''} onClick={()=>setDate(d)}><div className="bar-track"><span style={{height:`${v?Math.max(5,Math.min(100,v/Math.max(target.calories,total.calories,1)*100)):0}%`}}/></div><small>{new Date(d+'T12:00:00').toLocaleDateString('hr-HR',{weekday:'short'}).replace('.','')}</small></button>})}</div><div className="weekly-caption"><span className="leaf-dot"/>Zabilježeni unos <span className="muted">kcal</span></div></section><section className="card favorites-card"><div className="section-top"><h2>Omiljeni obroci</h2><Heart size={18}/></div>{state.favorites.length?state.favorites.map(f=><div className="favorite-row" key={f.id}><button onClick={()=>{setPreview(f.items.map(i=>({...i,id:uid(),date})));setMeal(f.items[0]?.meal||initialMeal());setUnknown([]);setInput('');setModal('add')}}><b>{f.name}</b><small>{fmt(sum(f.items).calories)} kcal · {f.items.length} stavki</small></button><button className="icon-button" aria-label={'Obriši omiljeni '+f.name} onClick={()=>{const old=state.favorites;update(s=>({...s,favorites:s.favorites.filter(x=>x.id!==f.id)}));toast('Omiljeni obrok uklonjen',{action:{label:t('undo'),onClick:()=>update(s=>({...s,favorites:old}))}})}}><X size={16}/></button></div>):<><p className="muted">Tvoj najdraži doručak,<br/>udaljen samo jedan dodir.</p><button className="text-button" onClick={()=>{const found=mealTypes.find(m=>dayItems.some(i=>i.meal===m));if(found){setMeal(found);setModal('favorite')}else{toast('Najprije dodaj svoj prvi obrok.');openAdd()}}}>Spremi obrok <Plus size={16}/></button></>}</section><button className="weight-teaser" onClick={()=>setModal('weight')}><span className="weight-icon"><Scale size={24}/></span><span><small>MOJA TEŽINA</small><b>{fmt([...state.weights].sort((a,b)=>b.date.localeCompare(a.date))[0]?.kg||state.profile.weight,1)} <em>kg</em></b></span><Plus size={20}/></button></aside></div></TabsContent>
  <TabsContent value="history" className="tab-page"><div className="history-toolbar"><Choice value={range} onChange={setRange} label="Razdoblje statistike" options={[{value:'1',label:'Dnevni pregled'},{value:'7',label:'Zadnjih 7 dana'},{value:'30',label:'Zadnjih 30 dana'}]}/><span className="muted">{loggedDays} zabilježenih dana · dani bez zapisa nisu nula</span></div><div className="stats-grid">{macros.map(k=><div className={'card stat-card '+k} key={k}><span>{range==='1'?t(k):'Prosjek · '+t(k).toLowerCase()}</span><b>{loggedDays?fmt(statsTotal[k]/loggedDays):'—'}<small>{k==='calories'?'kcal':'g'}</small></b></div>)}</div><div className="history-grid"><section className="card calendar-card"><div className="section-top"><h2>Kalendar prehrane</h2><div className="month-controls"><button className="icon-button" aria-label="Prethodni mjesec" onClick={()=>setCalendarMonth(dayOffset(monthFirst,-1).slice(0,7))}><ChevronLeft size={18}/></button><span>{new Date(monthFirst+'T12:00:00').toLocaleDateString('hr-HR',{month:'long',year:'numeric'})}</span><button className="icon-button" aria-label="Sljedeći mjesec" onClick={()=>setCalendarMonth(dayOffset(monthFirst,monthCount).slice(0,7))}><ChevronRight size={18}/></button></div></div><div className="calendar-grid">{['P','U','S','Č','P','S','N'].map((d,i)=><b className="weekday" key={i}>{d}</b>)}{Array.from({length:monthPad},(_,i)=><span key={'pad'+i}/>)}{Array.from({length:monthCount},(_,i)=>{const d=calendarMonth+'-'+String(i+1).padStart(2,'0'),entries=state.items.filter(x=>x.date===d);return <button key={d} className={d===date?'active':''} onClick={()=>setDate(d)} aria-label={`${dateLabel(d)}, ${entries.length?fmt(sum(entries).calories)+' kcal':'nema zapisa'}`}><span>{i+1}</span><small>{entries.length?fmt(sum(entries).calories):'—'}</small></button>})}</div><p className="muted">{within} od {loggedDays} zabilježenih dana unutar kalorijskog cilja.</p></section><section className="card history-day"><div className="section-top"><h2>{dateLabel(date)}</h2><button className="text-button" onClick={()=>setTab('today')}>Dnevnik <ArrowRight size={16}/></button></div><MiniTotals items={dayItems}/>{dayItems.length?mealTypes.filter(m=>dayItems.some(i=>i.meal===m)).map(m=><div className="history-meal" key={m}><b>{t(m)}</b>{dayItems.filter(i=>i.meal===m).map(i=><button key={i.id} onClick={()=>editItem(i)}><span>{i.name} <small>{fmt(i.grams)} g</small></span><b>{fmt(nutrition(i).calories)}</b></button>)}</div>):<div className="empty-state"><Utensils size={30}/><h3>Dan bez zapisa</h3><p>Obroci za ovaj dan još nisu dodani.</p><button className="secondary" onClick={()=>openAdd()}>Dodaj obrok</button></div>}</section><section className="card weight-chart-card"><div className="section-top"><h2>Trend težine</h2><button className="text-button" onClick={()=>setModal('weight')}><Plus size={17}/>Unesi težinu</button></div><Choice value={weightRange} onChange={setWeightRange} label="Razdoblje težine" options={[{value:'7',label:'7 dana'},{value:'30',label:'30 dana'},{value:'90',label:'3 mjeseca'},{value:'180',label:'6 mjeseci'},{value:'365',label:'1 godina'}]}/>{filteredWeights.length>1?(()=>{const min=Math.min(...filteredWeights.map(w=>w.kg))-1,max=Math.max(...filteredWeights.map(w=>w.kg))+1,start=new Date(filteredWeights[0].date).getTime(),end=new Date(filteredWeights.at(-1)!.date).getTime();const pts=filteredWeights.map(w=>({x:40+(new Date(w.date).getTime()-start)/(end-start||1)*620,y:160-(w.kg-min)/(max-min)*130,w}));return <><svg className="weight-chart" viewBox="0 0 700 190" role="img" aria-label="Promjena zabilježene težine"><line x1="40" x2="660" y1="160" y2="160" stroke="var(--line)"/><polyline points={pts.map(p=>p.x+','+p.y).join(' ')} fill="none" stroke="var(--green)" strokeWidth="3" strokeLinejoin="round"/>{pts.map(p=><g key={p.w.date}><circle cx={p.x} cy={p.y} r="5" fill="var(--green)"/><text x={p.x} y={p.y-12} textAnchor="middle" fill="var(--ink)" fontSize="14">{fmt(p.w.kg,1)}</text></g>)}</svg><div className="section-top muted"><span>{dateLabel(filteredWeights[0].date)}</span><span>{dateLabel(filteredWeights.at(-1)!.date)}</span></div></>})():<div className="empty-state"><Scale size={30}/><p>{filteredWeights.length?`Prvi zapis: ${fmt(filteredWeights[0].kg,1)} kg. Dodaj težinu drugog dana za prikaz trenda.`:'Još nema unosa težine u ovom razdoblju.'}</p></div>}<div className="weight-records">{filteredWeights.slice(-7).map(w=><div key={w.date}><span>{dateLabel(w.date)}</span><b>{fmt(w.kg,1)} kg</b><button className="icon-button" aria-label={'Obriši težinu '+w.date} onClick={()=>{const old=state.weights;update(s=>({...s,weights:s.weights.filter(x=>x.date!==w.date)}));toast('Zapis uklonjen',{action:{label:t('undo'),onClick:()=>update(s=>({...s,weights:old}))}})}}><Trash2 size={15}/></button></div>)}</div></section></div></TabsContent>
  <TabsContent value="ai" className="tab-page"><section className="chat-card card"><div className="chat-heading"><span className="ai-spark"><Sparkles size={24}/></span><div><h2>Tvoj asistent za prehranu</h2><p className="muted">{aiReady?(user?'AI povezan s tvojim spremljenim dnevnikom':anonymousAi?'AI radi s lokalnim dnevnikom na ovom uređaju':'Prijavi se za AI razgovor'):'Lokalni pomoćnik · ograničene naredbe bez AI-ja'}</p></div></div><div className="chat-messages" aria-live="polite">{!state.messages.length?<div className="chat-welcome"><p className="eyebrow">KRENI OD ONOGA ŠTO TE ZANIMA</p><h2>Brojke su tu.<br/>Pitaj što ti treba.</h2><div className="chat-suggestions">{['Koliko mi je ostalo kalorija danas?','Koliko još proteina trebam?','Dodaj jednu Medjool datulju.','Koliki je tjedni prosjek kalorija?'].map(q=><button key={q} onClick={()=>void sendChat(q)}>{q}<ArrowUpRight size={17}/></button>)}</div></div>:state.messages.map((m,i)=><div className={'chat-bubble '+m.role} key={i}>{m.role==='assistant'&&<Sparkles size={16}/>}<p>{m.content}</p></div>)}{busy&&<div className="muted"><LoaderCircle className="spin" size={18}/> Trenutak…</div>}{pending&&<div className="action-confirm"><p>Prijedlog još nije spremljen.</p><button className="primary" onClick={()=>{const item=state.items.find(i=>i.id===pending.itemId);if(!item){toast.error('Stavka više ne postoji.');setPending(null);return}if(pending.action==='edit'&&pending.grams&&pending.grams>0&&pending.grams<=5000)changeItems(state.items.map(i=>i.id===item.id?{...i,grams:pending.grams!,isEstimate:false}:i),'Količina promijenjena');else if(pending.action==='delete')changeItems(state.items.filter(i=>i.id!==item.id),'Stavka obrisana');setPending(null)}}>Potvrdi {pending.action==='delete'?'brisanje':'izmjenu'}</button><button className="secondary" onClick={()=>setPending(null)}>Odustani</button></div>}<div ref={bottom}/></div><form className="chat-form" onSubmit={e=>{e.preventDefault();void sendChat()}}><input aria-label="Poruka asistentu" placeholder="Pitaj ili napiši što si pojeo…" value={chat} maxLength={2000} onChange={e=>setChat(e.target.value)}/><button className="primary" disabled={busy||!chat.trim()} aria-label="Pošalji poruku"><Send size={20}/></button></form><p className="chat-note">Za {dateLabel(date)} · izmjene potvrđuješ prije spremanja.</p></section></TabsContent>
- <TabsContent value="profile" className="tab-page"><div className="profile-grid"><section className="card"><div className="section-top"><h2>Osobni podaci i ciljevi</h2><UserRound size={21}/></div><ProfileForm value={state.profile} onSave={p=>{update(s=>({...s,profile:p}));toast.success('Profil spremljen')}}/></section><div className="right-stack"><section className="card"><h2>Račun i spremanje</h2><p className="muted">{user?user.user.email:'Dnevnik je trenutačno spremljen samo u ovom pregledniku.'}</p>{user?<><p>{status}</p><button className="secondary" onClick={()=>void sync().catch(e=>toast.error(e.message))}><Cloud size={18}/>Sinkroniziraj</button><button className="text-button" onClick={()=>void signOut()}><LogOut size={17}/>Odjavi se</button><div className="divider"/><h3>Brisanje računa</h3><p className="muted">Trajno briše račun i sve podatke spremljene u Kalora oblaku. Ovu radnju nije moguće poništiti.</p><button className="danger full" onClick={()=>{setDeleteConfirm('');setModal('delete-account')}}><Trash2 size={18}/>Izbriši račun i podatke</button></>:<button className="primary" onClick={()=>{setAuthMessage('');setModal('login')}}>Prijava / registracija <ArrowRight size={17}/></button>}<p className="small-note">{cloudReady()?'Lokalni dnevnik i prijavljeni račun čuvaju se odvojeno. Za prijenos koristi izvoz i uvoz.':'Za prijavu i sinkronizaciju potrebno je povezati Supabase prema priloženim uputama.'}</p><div className="divider"/><h3>AI unos i razgovor</h3><p className="muted">{aiReady?(user?'AI je povezan i koristi spremljeni cloud dnevnik.':anonymousAi?'AI je povezan i može procjenjivati hranu bez ručnog unosa deklaracije.':'AI je povezan, ali anonimni AI je isključen — prijavi se za korištenje.'):'AI nije povezan. Dok ne postaviš API ključ, radi samo ograničeni lokalni unos poznatih namirnica.'}</p><p className="small-note">OpenAI API ključ postavlja se isključivo na poslužitelju. AI procjene su približne; točne deklaracije možeš dodati samo ako želiš precizniji proizvod.</p></section><section className="card"><h2>Izgled</h2><Choice label="Tema" value={theme} onChange={setTheme} options={[{value:'system',label:'Prati sustav'},{value:'light',label:'Svijetlo'},{value:'dark',label:'Tamno'}]}/><div className="divider"/><h3>Instaliraj na iPhone</h3><p className="muted">Otvori aplikaciju u Safariju. Dodirni <b>Dijeli</b>, zatim <b>Dodaj na početni zaslon</b>.</p><p className="small-note">Offline dnevnik dostupan je nakon prvog učitavanja objavljene aplikacije. AI i prijava trebaju internet.</p></section><section className="card"><h2>Tvoji podaci</h2><button className="secondary" onClick={()=>exportData(state)}><Download size={18}/>Izvezi dnevnik</button><label className="upload-button secondary">Uvezi sigurnosnu kopiju<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5e6)throw new Error('Datoteka je prevelika.');const imported=stateSchema.parse(JSON.parse(await file.text()));const previous=state;update(()=>imported);toast.success('Dnevnik uvezen',{action:{label:t('undo'),onClick:()=>update(()=>previous)},duration:10000})}catch{toast.error('Datoteka nije valjan Kalora dnevnik.')}e.target.value=''}}/></label><p className="small-note">Uvoz zamjenjuje trenutni dnevnik. Prvo izvezi postojeće podatke.</p><button className="text-button" onClick={()=>setModal('food')}>Dodaj točnu deklaraciju (opcionalno) <Plus size={16}/></button></section></div></div></TabsContent>
+ <TabsContent value="profile" className="tab-page"><div className="profile-grid"><section className="card"><div className="section-top"><h2>Osobni podaci i ciljevi</h2><UserRound size={21}/></div><ProfileForm value={state.profile} onSave={p=>{update(s=>({...s,profile:p}));toast.success('Profil spremljen')}}/></section><div className="right-stack"><section className="card"><h2>Račun i spremanje</h2><p className="muted">{user?user.user.email:'Dnevnik je trenutačno spremljen samo u ovom pregledniku.'}</p>{user?<><p>{status}</p><button className="secondary" onClick={()=>void sync().catch(e=>toast.error(e.message))}><Cloud size={18}/>Sinkroniziraj</button><button className="text-button" onClick={()=>void signOut()}><LogOut size={17}/>Odjavi se</button></>:<button className="primary" onClick={()=>{setAuthMessage('');setModal('login')}}>Prijava / registracija <ArrowRight size={17}/></button>}<p className="small-note">{cloudReady()?'Lokalni dnevnik i prijavljeni račun čuvaju se odvojeno. Za prijenos koristi izvoz i uvoz.':'Za prijavu i sinkronizaciju potrebno je povezati Supabase prema priloženim uputama.'}</p><div className="divider"/><h3>AI unos i razgovor</h3><p className="muted">{aiReady?(user?'AI je povezan i koristi spremljeni cloud dnevnik.':anonymousAi?'AI je povezan i može procjenjivati hranu bez ručnog unosa deklaracije.':'AI je povezan, ali anonimni AI je isključen — prijavi se za korištenje.'):'AI nije povezan. Dok ne postaviš API ključ, radi samo ograničeni lokalni unos poznatih namirnica.'}</p><p className="small-note">OpenAI API ključ postavlja se isključivo na poslužitelju. AI procjene su približne; točne deklaracije možeš dodati samo ako želiš precizniji proizvod.</p></section><section className="card"><h2>Izgled</h2><Choice label="Tema" value={theme} onChange={setTheme} options={[{value:'system',label:'Prati sustav'},{value:'light',label:'Svijetlo'},{value:'dark',label:'Tamno'}]}/><div className="divider"/><h3>Instaliraj na iPhone</h3><p className="muted">Otvori aplikaciju u Safariju. Dodirni <b>Dijeli</b>, zatim <b>Dodaj na početni zaslon</b>.</p><p className="small-note">Offline dnevnik dostupan je nakon prvog učitavanja objavljene aplikacije. AI i prijava trebaju internet.</p></section><section className="card"><h2>Tvoji podaci</h2><button className="secondary" onClick={()=>exportData(state)}><Download size={18}/>Izvezi dnevnik</button><label className="upload-button secondary">Uvezi sigurnosnu kopiju<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5e6)throw new Error('Datoteka je prevelika.');const imported=stateSchema.parse(JSON.parse(await file.text()));const previous=state;update(()=>imported);toast.success('Dnevnik uvezen',{action:{label:t('undo'),onClick:()=>update(()=>previous)},duration:10000})}catch{toast.error('Datoteka nije valjan Kalora dnevnik.')}e.target.value=''}}/></label><p className="small-note">Uvoz zamjenjuje trenutni dnevnik. Prvo izvezi postojeće podatke.</p><button className="text-button" onClick={()=>setModal('food')}>Dodaj točnu deklaraciju (opcionalno) <Plus size={16}/></button></section></div></div></TabsContent>
  </main><footer className="desktop-footer"><span>kalora<span>•</span></span><p>Malo više svijesti. Malo više ravnoteže.</p><small>Vrijednosti su okvirne procjene.</small></footer></div><TabsList className="bottom-nav">{[['today','Danas',Home],['history','Povijest',CalendarDays],['ai','AI',Sparkles],['profile','Profil',UserRound]].map(([value,label,Icon])=><TabsTrigger key={String(value)} value={String(value)}><Icon size={21}/><span>{String(label)}</span></TabsTrigger>)}</TabsList><button className="mobile-fab" onClick={()=>openAdd()} aria-label="Dodaj obrok"><Plus size={27}/></button></Tabs>
- <Modal open={modal==='add'} onClose={close} title="Što si pojeo?" description={`Dodavanje za ${dateLabel(date)}. Napiši obrok svojim riječima — AI će napraviti procjenu.`}><Choice value={meal} onChange={m=>{const next=m as MealType;setMeal(next);setPreview(p=>p.map(i=>({...i,meal:next})))}} label="Obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/><textarea autoFocus rows={3} maxLength={2000} value={input} onChange={e=>setInput(e.target.value)} placeholder="npr. 3 punjene paprike i oko 60 g kruha" aria-label="Opis obroka"/><button className="primary full" disabled={busy||!input.trim()} onClick={()=>void analyze()}>{busy?<LoaderCircle className="spin" size={18}/>:<Sparkles size={18}/>} {busy?'Procjenjujem obrok…':aiReady&&(user||anonymousAi)?'Procijeni s AI':'Analiziraj'}</button><div style={{display:'flex',alignItems:'center',gap:10,margin:'12px 0'}}><div style={{height:1,background:'var(--line)',flex:1}}/><span className="small-note" style={{margin:0}}>ili</span><div style={{height:1,background:'var(--line)',flex:1}}/></div><button className="secondary full" type="button" onClick={()=>{setBarcodeError('');setModal('barcode')}}><Camera size={18}/>Skeniraj barkod</button><p className="small-note">{aiReady&&online&&(user||anonymousAi)?'Za brendirane proizvode AI prvo pokušava pronaći stvarnu nutritivnu deklaraciju na webu. Ako je ne pronađe pouzdano, koristi procjenu. Ako gramaža nije navedena, koristi tipičnu porciju i označava procjenu.':!online?'Izvanmrežno si. AI procjena treba internet; poznate namirnice možeš privremeno analizirati lokalno.':aiReady&&!user&&!anonymousAi?'AI je povezan, ali za korištenje se trebaš prijaviti.':'AI još nije povezan. Postavi OPENAI_API_KEY za automatsku procjenu bilo kojeg prepoznatljivog jela.'}</p>{unknown.length>0&&<div className="notice" role="alert">Nisam siguran za: {unknown.join(', ')}. Opiši taj dio malo jasnije (npr. vrstu hrane, broj komada ili veličinu porcije) i pokušaj ponovno.</div>}{preview.length>0&&<section className="preview-section"><h3>Procijenjeni obrok <span className="small-pill">{analyzeMode==='ai'?'AI PROCJENA':analyzeMode==='barcode'?'BARKOD':'BRZI ODABIR'}</span></h3>{preview.map(i=><div className="preview-row" key={i.id}><div><b>{i.name}</b><small>{fmt(nutrition(i).calories)} kcal · {i.source.startsWith('Open Food Facts')?'Open Food Facts · podaci na 100 g':i.source.startsWith('Web provjerena')?(i.isEstimate?'Web deklaracija · procijenjena količina':'Web deklaracija · navedena gramaža'):i.source.startsWith('AI procjena')?(i.isEstimate?'AI procjena · procijenjena količina':'AI procjena · navedena gramaža'):(i.isEstimate?'Procijenjena količina':'Navedena gramaža')}</small></div><label><input type="number" inputMode="decimal" aria-label={'Grami za '+i.name} min={1} max={5000} step=".1" defaultValue={i.grams} onChange={e=>{if(e.target.value==='')return;const grams=Number(e.target.value);if(grams>0&&grams<=5000)setPreview(preview.map(x=>x.id===i.id?{...x,grams,isEstimate:false}:x))}}/><span>g</span></label><button className="icon-button" aria-label={'Ukloni '+i.name+' iz pregleda'} onClick={()=>setPreview(preview.filter(x=>x.id!==i.id))}><X size={16}/></button></div>)}<MiniTotals items={preview}/><p className="small-note">Približne nutritivne vrijednosti. Količinu možeš ispraviti prije spremanja.</p><button className="primary full" onClick={savePreview}><Check size={19}/>Dodaj u dnevnik</button></section>}<details className="manual-options"><summary>Brzi odabir ili točna deklaracija <span>opcionalno</span></summary><div className="manual-options-body"><div className="section-top"><h3>{search?'Rezultati pretrage':'Često jedeš'}</h3><button className="text-button" onClick={()=>setModal('food')}>Točna deklaracija</button></div><label className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pronađi spremljenu namirnicu…" aria-label="Pretraži spremljene namirnice"/></label><div className="quick-foods">{foodsRanked.slice(0,search?20:7).map(f=><button key={f.id} onClick={()=>{setPreview([...preview,makeItem(f,f.serving,meal,date)]);setAnalyzeMode('local')}}>{f.name}<span>{fmt(f.serving)} g</span><Plus size={14}/></button>)}</div>{!foodsRanked.length&&<p className="muted">Nema spremljene namirnice s tim nazivom. Za običnu hranu samo je opiši iznad i prepusti procjenu AI-ju.</p>}</div></details></Modal>
+ <Modal open={modal==='add'} onClose={close} title="Što si pojeo?" description={`Dodavanje za ${dateLabel(date)}. Napiši obrok svojim riječima — AI će napraviti procjenu.`}><Choice value={meal} onChange={m=>{const next=m as MealType;setMeal(next);setPreview(p=>p.map(i=>({...i,meal:next})))}} label="Obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/><textarea autoFocus rows={3} maxLength={2000} value={input} onChange={e=>setInput(e.target.value)} placeholder="npr. 3 punjene paprike i oko 60 g kruha" aria-label="Opis obroka"/><button className="primary full" disabled={busy||!input.trim()} onClick={()=>void analyze()}>{busy?<LoaderCircle className="spin" size={18}/>:<Sparkles size={18}/>} {busy?'Procjenjujem obrok…':aiReady&&(user||anonymousAi)?'Procijeni s AI':'Analiziraj'}</button><div style={{display:'flex',alignItems:'center',gap:10,margin:'12px 0'}}><div style={{height:1,background:'var(--line)',flex:1}}/><span className="small-note" style={{margin:0}}>ili</span><div style={{height:1,background:'var(--line)',flex:1}}/></div><button className="secondary full" type="button" onClick={()=>{setBarcodeError('');setModal('barcode')}}><Camera size={18}/>Skeniraj barkod</button><p className="small-note">{aiReady&&online&&(user||anonymousAi)?'Za brendirane proizvode AI prvo pokušava pronaći stvarnu nutritivnu deklaraciju na webu. Ako je ne pronađe pouzdano, koristi procjenu. Ako gramaža nije navedena, koristi tipičnu porciju i označava procjenu.':!online?'Izvanmrežno si. AI procjena treba internet; poznate namirnice možeš privremeno analizirati lokalno.':aiReady&&!user&&!anonymousAi?'AI je povezan, ali za korištenje se trebaš prijaviti.':'AI još nije povezan. Postavi OPENAI_API_KEY za automatsku procjenu bilo kojeg prepoznatljivog jela.'}</p>{unknown.length>0&&<div className="notice" role="alert">Nisam siguran za: {unknown.join(', ')}. Opiši taj dio malo jasnije (npr. vrstu hrane, broj komada ili veličinu porcije) i pokušaj ponovno.</div>}{preview.length>0&&<section className="preview-section"><h3>Procijenjeni obrok <span className="small-pill">{analyzeMode==='ai'?'AI PROCJENA':analyzeMode==='barcode'?'BARKOD':'BRZI ODABIR'}</span></h3>{preview.map(i=><div className="preview-row" key={i.id}><div><b>{i.name}</b><small>{fmt(nutrition(i).calories)} kcal · {i.source.startsWith('Open Food Facts')?'Open Food Facts · podaci na 100 g':i.source.startsWith('Web provjerena')?(i.isEstimate?'Web deklaracija · procijenjena količina':'Web deklaracija · navedena gramaža'):i.source.startsWith('AI procjena')?(i.isEstimate?'AI procjena · procijenjena količina':'AI procjena · navedena gramaža'):(i.isEstimate?'Procijenjena količina':'Navedena gramaža')}</small></div><label><input type="text" inputMode="decimal" aria-label={'Grami za '+i.name} defaultValue={i.grams} onChange={e=>{const raw=e.target.value.trim();if(raw==='')return;const grams=Number(raw.replace(',','.'));if(Number.isFinite(grams)&&grams>0&&grams<=5000)setPreview(preview.map(x=>x.id===i.id?{...x,grams,isEstimate:false}:x))}}/><span>g</span></label><button className="icon-button" aria-label={'Ukloni '+i.name+' iz pregleda'} onClick={()=>setPreview(preview.filter(x=>x.id!==i.id))}><X size={16}/></button></div>)}<MiniTotals items={preview}/><p className="small-note">Približne nutritivne vrijednosti. Količinu možeš ispraviti prije spremanja.</p><button className="primary full" onClick={savePreview}><Check size={19}/>Dodaj u dnevnik</button></section>}<details className="manual-options"><summary>Brzi odabir ili točna deklaracija <span>opcionalno</span></summary><div className="manual-options-body"><div className="section-top"><h3>{search?'Rezultati pretrage':'Često jedeš'}</h3><button className="text-button" onClick={()=>setModal('food')}>Točna deklaracija</button></div><label className="search-field"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pronađi spremljenu namirnicu…" aria-label="Pretraži spremljene namirnice"/></label><div className="quick-foods">{foodsRanked.slice(0,search?20:7).map(f=><button key={f.id} onClick={()=>{setPreview([...preview,makeItem(f,f.serving,meal,date)]);setAnalyzeMode('local')}}>{f.name}<span>{fmt(f.serving)} g</span><Plus size={14}/></button>)}</div>{!foodsRanked.length&&<p className="muted">Nema spremljene namirnice s tim nazivom. Za običnu hranu samo je opiši iznad i prepusti procjenu AI-ju.</p>}</div></details></Modal>
  <Modal open={modal==='barcode'} onClose={close} title="Skeniraj barkod" description="Usmjeri stražnju kameru prema EAN/UPC barkodu proizvoda."><div style={{position:'relative',overflow:'hidden',borderRadius:18,background:'#000',aspectRatio:'4 / 3'}}><video ref={barcodeVideo} playsInline muted autoPlay style={{width:'100%',height:'100%',objectFit:'cover'}}/><div style={{position:'absolute',left:'10%',right:'10%',top:'38%',height:'24%',border:'2px solid rgba(255,255,255,.9)',borderRadius:14,boxShadow:'0 0 0 999px rgba(0,0,0,.25)'}}/></div>{barcodeBusy&&<p className="small-note"><LoaderCircle className="spin" size={16}/> Tražim proizvod…</p>}{barcodeError&&<div className="notice" role="alert">{barcodeError}</div>}<p className="small-note">Podaci se dohvaćaju iz Open Food Facts. Prije spremanja možeš ispraviti količinu.</p><button className="text-button" type="button" onClick={()=>{scannerControls.current?.stop();scannerControls.current=null;setModal('add')}}>Natrag na unos</button></Modal>
  <Modal open={modal==='edit'&&!!editing} onClose={close} title={editing?.name||'Uredi stavku'} description="Promijeni količinu ili premjesti hranu. Nutritivne vrijednosti preračunavaju se automatski.">{editing&&<form onSubmit={e=>{e.preventDefault();changeItems(state.items.map(i=>i.id===editing.id?editing:i),'Stavka je ažurirana');close()}}><label className="field">Količina (g)<input key={editing.id} autoFocus required type="number" inputMode="decimal" min={1} max={5000} step=".1" defaultValue={editing.grams} onChange={e=>{if(e.target.value==='')return;const grams=Number(e.target.value);if(grams>0&&grams<=5000)setEditing({...editing,grams,isEstimate:false})}}/></label><label className="field">Obrok<Choice value={editing.meal} onChange={m=>setEditing({...editing,meal:m as MealType})} label="Premjesti u obrok" options={mealTypes.map(m=>({value:m,label:t(m)}))}/></label><MiniTotals items={[editing]}/><p className="small-note">Izvor: {editing.source}</p><div className="button-row"><button type="button" className="danger" onClick={()=>{changeItems(state.items.filter(i=>i.id!==editing.id),'Stavka je obrisana');close()}}><Trash2 size={18}/>Obriši</button><button className="primary"><Check size={18}/>Spremi</button></div></form>}</Modal>
  <Modal open={modal==='favorite'} onClose={close} title="Spremi omiljeni obrok" description={`Sačuvaj ${t(meal).toLowerCase()} za sljedeći put.`}><form onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);const items=dayItems.filter(i=>i.meal===meal);if(!items.length)return;update(s=>({...s,favorites:[...s.favorites,{id:uid(),name:String(data.get('name')),items}]}));toast.success('Obrok je u omiljenima');close()}}><label className="field">Naziv obroka<input required name="name" maxLength={100} defaultValue={'Moj '+t(meal).toLowerCase()}/></label><MiniTotals items={dayItems.filter(i=>i.meal===meal)}/><button className="primary full"><Heart size={18}/>Spremi obrok</button></form></Modal>
  <Modal open={modal==='weight'} onClose={close} title="Zabilježi težinu" description="Prati trend kroz vrijeme. Jedan zapis po danu."><form onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget),date=String(d.get('date')),kg=Number(d.get('kg'));update(s=>({...s,weights:[...s.weights.filter(w=>w.date!==date),{date,kg}]}));toast.success('Težina spremljena');close()}}><label className="field">Datum<input type="date" name="date" required defaultValue={date}/></label><label className="field">Težina (kg)<input type="number" required name="kg" min={35} max={300} step=".1" defaultValue={state.weights.find(w=>w.date===date)?.kg||state.profile.weight}/></label><button className="primary full"><Check size={18}/>Spremi težinu</button></form></Modal>
  <Modal open={modal==='target'} onClose={close} title="Cilj za ovaj dan" description={`Vrijedi samo za ${dateLabel(date)}. Zadani cilj mijenjaš u profilu.`}>{dailyTarget&&<form onSubmit={e=>{e.preventDefault();const parsed=targetSchema.safeParse(dailyTarget);if(!parsed.success){toast.error('Provjeri vrijednosti ciljeva.');return}update(s=>({...s,targets:{...s.targets,[date]:parsed.data}}));toast.success('Dnevni cilj spremljen');close()}}><div className="form-grid">{macros.map(k=><label key={k} className="field">{t(k)}<input type="number" required min={k==='calories'?800:0} max={k==='calories'?8000:k==='carbs'?1200:500} value={dailyTarget[k]} onChange={e=>setDailyTarget({...dailyTarget,[k]:Number(e.target.value)})}/></label>)}</div><button className="primary full">Spremi dnevni cilj</button><button className="text-button" type="button" onClick={()=>{update(s=>{const targets={...s.targets};delete targets[date];return {...s,targets}});close()}}>Vrati zadani cilj</button></form>}</Modal>
  <Modal open={modal==='food'} onClose={close} title="Tvoja namirnica" description="Prepiši nutritivne vrijednosti s deklaracije na 100 g. Spremit ćemo ih za buduće unose."><form onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget);const f=foodSchema.parse({id:uid(),name:String(d.get('name')),brand:String(d.get('brand')),aliases:[norm(String(d.get('name')))],serving:Number(d.get('serving')),calories:Number(d.get('calories')),protein:Number(d.get('protein')),carbs:Number(d.get('carbs')),fat:Number(d.get('fat')),fiber:0,source:'Deklaracija koju je unio korisnik',verified:true});update(s=>({...s,foods:[...s.foods,f]}));toast.success('Namirnica spremljena');setPreview([makeItem(f,f.serving,meal,date)]);setUnknown([]);setModal('add')}}><label className="field">Naziv proizvoda<input name="name" required maxLength={150} placeholder="npr. Hydrolysed Whey"/></label><label className="field">Proizvođač<input name="brand" maxLength={100} placeholder="npr. MyProtein"/></label><div className="form-grid">{macros.map(k=><label className="field" key={k}>{t(k)} / 100 g<input name={k} type="number" min={0} max={k==='calories'?1000:100} step=".1" required/></label>)}</div><label className="field">Uobičajena porcija (g)<input required type="number" name="serving" min={1} max={5000} defaultValue={30}/></label><button className="primary full">Spremi i pripremi unos</button></form></Modal>
- <Modal open={modal==='delete-account'} onClose={close} title="Trajno izbriši račun" description="Ovim se brišu tvoj Kalora račun i svi podaci spremljeni u oblaku.">{user&&<><div className="notice"><b>Prije brisanja:</b> ako želiš sačuvati kopiju dnevnika, zatvori ovaj prozor i u Profilu odaberi <b>Izvezi dnevnik</b>.</div><label className="field">Za potvrdu upiši <b>IZBRIŠI</b><input value={deleteConfirm} onChange={e=>setDeleteConfirm(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="IZBRIŠI"/></label><p className="small-note">Brisanjem se uklanjaju profil, obroci, težina, ciljevi, omiljeni obroci i AI razgovori povezani s ovim računom. Briše se i lokalna kopija ovog prijavljenog računa na ovom uređaju.</p><button type="button" className="danger full" disabled={busy||deleteConfirm.trim().toLocaleUpperCase('hr-HR')!=='IZBRIŠI'} onClick={async()=>{setBusy(true);try{await deleteAccount();setDeleteConfirm('');setModal('');toast.success('Račun i spremljeni podaci su izbrisani.')}catch(e){toast.error((e as Error).message)}finally{setBusy(false)}}}><Trash2 size={18}/>{busy?'Brišem račun…':'Trajno izbriši račun'}</button><button type="button" className="secondary full" onClick={close}>Odustani</button></>}</Modal>
  <Modal open={modal==='login'} onClose={close} title="Tvoj dnevnik, svugdje." description="Prijavi se za spremanje i sinkronizaciju među uređajima.">{cloudReady()?<><Choice value={loginMode} onChange={setLoginMode} label="Način prijave" options={[{value:'login',label:'Prijava lozinkom'},{value:'signup',label:'Novi račun'},{value:'magic',label:'Prijava e-mail poveznicom'}]}/><form onSubmit={async e=>{e.preventDefault();setBusy(true);setAuthMessage('');const d=new FormData(e.currentTarget);try{if(loginMode==='magic'){await authRequest('otp?redirect_to='+encodeURIComponent(location.origin),{email:d.get('email'),create_user:true});setAuthMessage('Provjeri e-mail i otvori poveznicu za prijavu.')}else if(loginMode==='signup'){await authRequest('signup',{email:d.get('email'),password:d.get('password')});setAuthMessage('Račun je kreiran. Ako je potvrda uključena, provjeri e-mail.')}else{await authRequest('token?grant_type=password',{email:d.get('email'),password:d.get('password')});setModal('');toast.success('Prijava je uspjela')}}catch(e){setAuthMessage((e as Error).message)}finally{setBusy(false)}}}><label className="field">E-mail<input type="email" name="email" required autoComplete="email"/></label>{loginMode!=='magic'&&<label className="field">Lozinka<input type="password" name="password" required minLength={8} autoComplete={loginMode==='signup'?'new-password':'current-password'}/></label>}<button className="primary full" disabled={busy}>{busy?'Pričekaj…':loginMode==='magic'?'Pošalji poveznicu':loginMode==='signup'?'Kreiraj račun':'Prijavi se'}</button></form>{authMessage&&<p role="status">{authMessage}</p>}</>:<div className="notice">Prijava još nije povezana. Za sada možeš koristiti lokalni dnevnik. Upute za Supabase dolaze s projektom.</div>}</Modal>
  <Modal open={modal==='start'} onClose={close} title="Postavi svoj profil" description="Unesi svoje podatke za izračun dnevnog cilja."><ProfileForm value={state.profile} onboarding onSave={p=>{update(()=>({...initialState(false),profile:p,onboarded:true}));setModal('');toast.success('Tvoj plan je spreman!',{action:{label:t('undo'),onClick:()=>update(()=>state)},duration:10000})}}/></Modal>
  </>;
