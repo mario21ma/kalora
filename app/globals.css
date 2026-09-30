@@ -548,3 +548,38 @@ body{background:var(--bg)}
 }
 @media(max-width:380px){.energy-content.food-only{grid-template-columns:minmax(0,1fr) 170px!important}}
 @media(prefers-reduced-motion:reduce){.profile-toggle span{transition:none}}
+
+/* Kalora mobile ring label — keep the daily-goal percentage fully inside the calorie ring. */
+@media(max-width:760px){
+  .energy-content .calorie-ring .ring-label{
+    transform:translateY(-5px);
+    gap:2px;
+  }
+  .energy-content .calorie-ring .ring-label .ring-percent{
+    display:block;
+    width:100%;
+    max-width:104px;
+    margin:1px auto 0;
+    padding:0;
+    text-align:center;
+    white-space:normal;
+    overflow-wrap:normal;
+    font-size:.58rem;
+    line-height:1.08;
+    letter-spacing:0;
+  }
+  .energy-content .calorie-ring .ring-label small{
+    margin-top:2px;
+    line-height:1.1;
+  }
+}
+@media(max-width:380px){
+  .energy-content .calorie-ring .ring-label{
+    transform:translateY(-6px);
+    gap:1px;
+  }
+  .energy-content .calorie-ring .ring-label .ring-percent{
+    max-width:92px;
+    font-size:.54rem;
+  }
+}
