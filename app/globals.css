@@ -505,3 +505,21 @@ body{background:var(--bg)}
   .water-quick-buttons{gap:8px}.water-quick-buttons button{min-height:44px;border-radius:15px;font-size:.72rem;padding:0 6px;background:rgba(8,31,57,.45)}
 }
 @media(max-width:380px){.energy-content{grid-template-columns:minmax(0,1fr) 170px minmax(0,1fr)!important}.energy-content .calorie-ring{width:170px!important;height:170px!important;flex-basis:170px!important}.body-silhouette{height:266px}.water-quick-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.water-quick-buttons button{font-size:.68rem}.hydration-card{padding-inline:14px}}
+
+/* Intake totals and quick water controls on the main energy card. */
+.energy-card .home-water-buttons{margin-top:12px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.energy-card .home-water-buttons button{min-height:44px;white-space:nowrap;gap:5px;padding:0 4px}
+.profile-water-target{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.profile-water-target h3{color:var(--blue)}
+.profile-water-target .muted{margin:8px 0 14px}
+.profile-water-target .field small{display:block;color:var(--muted);margin-top:7px;line-height:1.5}
+.water-goal-preview{margin-top:14px;font-size:.9rem;color:var(--muted)}
+.water-goal-preview b{color:var(--ink)}
+@media(max-width:760px){
+ .energy-card .macro-label{display:block;text-align:center;margin-top:8px}
+ .energy-card .macro-label>span{display:none}
+ .energy-card .macro-label b{display:block;font-size:.8rem;color:#f5f9ff;white-space:nowrap;line-height:1.5}
+ .energy-card .macro-label small{font-size:.73rem;color:#b6c9df}
+ .energy-card .home-water-buttons button{font-size:.72rem;border-radius:15px;color:#7cdaff;background:rgba(8,31,57,.35)}
+ .energy-card .home-water-buttons svg{width:15px;height:15px}
+}
