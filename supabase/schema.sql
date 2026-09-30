@@ -35,6 +35,10 @@ create table public.weight_entries (
  user_id uuid not null references public.profiles(user_id) on delete cascade,
  date date not null, kg numeric not null check(kg between 35 and 300),primary key(user_id,date)
 );
+create table public.daily_water (
+ user_id uuid not null references public.profiles(user_id) on delete cascade,
+ date date not null, ml integer not null check(ml between 0 and 20000), primary key(user_id,date)
+);
 create table public.favorite_meals (
  user_id uuid not null references public.profiles(user_id) on delete cascade,
  id text not null, name text not null check(length(name) between 1 and 100),primary key(user_id,id)
@@ -57,7 +61,7 @@ create table public.ai_usage (user_id uuid not null references auth.users(id) on
 alter table public.ai_usage enable row level security;
 revoke all on public.ai_usage from anon,authenticated;
 do $$ declare tbl text; begin
- foreach tbl in array array['profiles','food_items','meals','meal_items','daily_targets','weight_entries','favorite_meals','favorite_meal_items','ai_conversations','ai_messages'] loop
+ foreach tbl in array array['profiles','food_items','meals','meal_items','daily_targets','weight_entries','daily_water','favorite_meals','favorite_meal_items','ai_conversations','ai_messages'] loop
  execute format('alter table public.%I enable row level security',tbl);
  execute format('create policy own_rows on public.%I for all to authenticated using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id)',tbl);
  execute format('grant select,insert,update,delete on public.%I to authenticated',tbl);
@@ -70,6 +74,7 @@ create function public.load_diary() returns jsonb language sql stable security i
  'items',coalesce((select jsonb_agg(i.payload order by m.date,m.meal_type,i.id) from meal_items i join meals m on m.user_id=i.user_id and m.id=i.meal_id where i.user_id=auth.uid()),'[]'::jsonb),
  'foods',coalesce((select jsonb_agg(f.payload) from food_items f where f.user_id=auth.uid()),'[]'::jsonb),
  'weights',coalesce((select jsonb_agg(jsonb_build_object('date',w.date,'kg',w.kg) order by w.date) from weight_entries w where w.user_id=auth.uid()),'[]'::jsonb),
+ 'water',coalesce((select jsonb_object_agg(w.date::text,w.ml) from daily_water w where w.user_id=auth.uid()),'{}'::jsonb),
  'targets',coalesce((select jsonb_object_agg(d.date::text,d.payload) from daily_targets d where d.user_id=auth.uid()),'{}'::jsonb),
  'favorites',coalesce((select jsonb_agg(jsonb_build_object('id',f.id,'name',f.name,'items',coalesce((select jsonb_agg(i.payload order by i.position) from favorite_meal_items i where i.user_id=f.user_id and i.favorite_id=f.id),'[]'::jsonb))) from favorite_meals f where f.user_id=auth.uid()),'[]'::jsonb),
  'messages',coalesce((select jsonb_agg(jsonb_build_object('role',m.role,'content',m.content) order by m.position) from ai_messages m where m.user_id=auth.uid()),'[]'::jsonb)
@@ -89,6 +94,7 @@ declare owner_id uuid:=auth.uid();rev bigint; entry jsonb;fav jsonb;idx int; beg
  delete from food_items where user_id=owner_id;
  delete from daily_targets where user_id=owner_id;
  delete from weight_entries where user_id=owner_id;
+ delete from daily_water where user_id=owner_id;
  delete from favorite_meals where user_id=owner_id;
  delete from ai_messages where user_id=owner_id;
  for entry in select value from jsonb_array_elements(document->'foods') loop
@@ -100,6 +106,7 @@ declare owner_id uuid:=auth.uid();rev bigint; entry jsonb;fav jsonb;idx int; beg
  end loop;
  insert into daily_targets(user_id,date,payload) select owner_id,key::date,value from jsonb_each(document->'targets');
  insert into weight_entries(user_id,date,kg) select owner_id,(value->>'date')::date,(value->>'kg')::numeric from jsonb_array_elements(document->'weights');
+ insert into daily_water(user_id,date,ml) select owner_id,key::date,(value::text)::integer from jsonb_each(coalesce(document->'water','{}'::jsonb));
  for fav in select value from jsonb_array_elements(document->'favorites') loop
  insert into favorite_meals(user_id,id,name) values(owner_id,fav->>'id',fav->>'name');idx:=0;
  for entry in select value from jsonb_array_elements(fav->'items') loop

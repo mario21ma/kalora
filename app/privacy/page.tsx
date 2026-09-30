@@ -18,12 +18,12 @@ export default function PrivacyPage(){
    <p className="legal-lead">Ova politika objašnjava koje podatke Kalora obrađuje, zašto ih koristi i koje mogućnosti imaš nad svojim podacima.</p>
    <p className="small-note">Zadnje ažuriranje: {updated}</p>
 
-   <section><h2>1. Što je Kalora</h2><p>Kalora je dnevnik prehrane i wellness aplikacija za odrasle. Omogućuje praćenje hrane, kalorija, makronutrijenata, težine i osobnih ciljeva. Kalora nije medicinski proizvod i AI procjene nisu zamjena za stručni medicinski ili nutricionistički savjet.</p></section>
+   <section><h2>1. Što je Kalora</h2><p>Kalora je dnevnik prehrane i wellness aplikacija za odrasle. Omogućuje praćenje hrane, kalorija, makronutrijenata, unosa vode, težine i osobnih ciljeva. Kalora nije medicinski proizvod i AI procjene nisu zamjena za stručni medicinski ili nutricionistički savjet.</p></section>
 
    <section><h2>2. Koje podatke obrađujemo</h2><ul>
     <li><b>Podaci računa:</b> e-mail adresa i podaci potrebni za prijavu kada izradiš Kalora račun.</li>
     <li><b>Profil i ciljevi:</b> ime ili nadimak, dob, spol za izračun, visina, težina, ciljana težina, razina aktivnosti, broj treninga i postavljeni kalorijski/makro ciljevi.</li>
-    <li><b>Dnevnik:</b> unesena hrana, količine, nutritivne vrijednosti, omiljeni obroci, dnevni ciljevi i zapisi težine.</li>
+    <li><b>Dnevnik:</b> unesena hrana, količine, nutritivne vrijednosti, dnevni unos vode, omiljeni obroci, dnevni ciljevi i zapisi težine.</li>
     <li><b>AI sadržaj:</b> tekst koji pošalješ funkciji „Procijeni s AI” ili AI razgovoru te relevantan kontekst dnevnika potreban za odgovor.</li>
     <li><b>Tehnički podaci:</b> nužni podaci zahtjeva i sigurnosni/operativni zapisi koje mogu obrađivati hosting i infrastrukturni pružatelji.</li>
    </ul></section>
