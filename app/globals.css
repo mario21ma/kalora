@@ -583,3 +583,31 @@ body{background:var(--bg)}
     font-size:.54rem;
   }
 }
+
+/* Kalora custom food icon system */
+.food-icon{position:relative;overflow:hidden;color:#42546d;--food-accent:#dce7f4;--food-spot:#ffffff;background:linear-gradient(145deg,#f5f8fc,#dfe8f3)!important}
+.food-icon svg{width:27px;height:27px;display:block;filter:drop-shadow(0 1px 0 rgba(255,255,255,.42))}
+.dark .food-icon{color:#d9e9fa;--food-accent:#29425f;--food-spot:#f8d978;background:linear-gradient(145deg,#192a40,#0f1c2d)!important}
+.food-icon-banana,.food-icon-citrus,.food-icon-pineapple,.food-icon-cheese,.food-icon-egg,.food-icon-honey{color:#b87713;--food-accent:#ffd866;--food-spot:#ffb52f}
+.food-icon-avocado,.food-icon-broccoli,.food-icon-leafy{color:#2b8050;--food-accent:#8edb7c;--food-spot:#9b7042}
+.food-icon-apple,.food-icon-berries,.food-icon-tomato,.food-icon-pepper,.food-icon-watermelon{color:#a94448;--food-accent:#f47d78;--food-spot:#58a85c}
+.food-icon-grape{color:#7050a0;--food-accent:#b08add;--food-spot:#7bc379}
+.food-icon-dates,.food-icon-potato,.food-icon-bread,.food-icon-oats,.food-icon-rice,.food-icon-pasta,.food-icon-tortilla,.food-icon-nuts{color:#8a653b;--food-accent:#dfbd83;--food-spot:#f2dcaa}
+.food-icon-carrot{color:#a85c23;--food-accent:#ef9852;--food-spot:#65a85a}
+.food-icon-mushroom{color:#77645a;--food-accent:#d5c5b7;--food-spot:#eee5dc}
+.food-icon-chicken,.food-icon-steak,.food-icon-bacon,.food-icon-sausage{color:#9a4b45;--food-accent:#d98578;--food-spot:#f1c0aa}
+.food-icon-fish,.food-icon-shrimp{color:#397a9d;--food-accent:#85c9df;--food-spot:#d9f1f7}
+.food-icon-dairy,.food-icon-protein{color:#4f78a4;--food-accent:#b9d8ef;--food-spot:#ffffff}
+.food-icon-pizza{color:#9d5c32;--food-accent:#f2b15e;--food-spot:#cb4e48}
+.food-icon-chocolate{color:#704630;--food-accent:#9b6646;--food-spot:#e4b78f}
+.food-icon-dessert{color:#9d5c8f;--food-accent:#e0a5d8;--food-spot:#ffffff}
+.food-icon-coffee{color:#704c3c;--food-accent:#c59b7f;--food-spot:#ffffff}
+.food-icon-juice{color:#b56d26;--food-accent:#f0a354;--food-spot:#ffd27b}
+.food-icon-soup{color:#a45b36;--food-accent:#dda16f;--food-spot:#f5d3ad}
+.dark .food-icon-banana,.dark .food-icon-citrus,.dark .food-icon-pineapple,.dark .food-icon-cheese,.dark .food-icon-egg,.dark .food-icon-honey{color:#ffcc61;--food-accent:#705820}
+.dark .food-icon-avocado,.dark .food-icon-broccoli,.dark .food-icon-leafy{color:#7ee0a1;--food-accent:#214f39}
+.dark .food-icon-apple,.dark .food-icon-berries,.dark .food-icon-tomato,.dark .food-icon-pepper,.dark .food-icon-watermelon{color:#ff8c8a;--food-accent:#5f2930}
+.dark .food-icon-grape{color:#c39aed;--food-accent:#3f2e59}
+.dark .food-icon-chicken,.dark .food-icon-steak,.dark .food-icon-bacon,.dark .food-icon-sausage{color:#f0a092;--food-accent:#5a302f}
+.dark .food-icon-fish,.dark .food-icon-shrimp{color:#8ed9f0;--food-accent:#234b61}
+@media(max-width:760px){.food-icon svg{width:26px;height:26px}}
