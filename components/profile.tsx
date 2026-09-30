@@ -15,6 +15,8 @@ type DraftProfile={
  activity:string;
  training:string;
  goal:''|'mild'|'moderate'|'maintain'|'gain';
+ waterTrackingEnabled:boolean;
+ showSilhouettes:boolean;
  waterMode:'auto'|'manual';
  waterLiters:string;
  targets:{calories:string;protein:string;carbs:string;fat:string};
@@ -31,6 +33,8 @@ function toDraft(value:Profile,onboarding:boolean):DraftProfile{
   activity:onboarding?'':String(value.activity),
   training:onboarding?'':String(value.training),
   goal:onboarding?'':value.goal,
+  waterTrackingEnabled:value.waterTrackingEnabled!==false,
+  showSilhouettes:value.showSilhouettes!==false,
   waterMode:value.waterGoalMl==null?'auto':'manual',
   waterLiters:String((value.waterGoalMl??suggestWaterGoalMl(value.weight))/1000),
   targets:{
@@ -53,6 +57,8 @@ function parseDraft(p:DraftProfile){
   activity:Number(p.activity),
   training:Number(p.training),
   goal:p.goal,
+  waterTrackingEnabled:p.waterTrackingEnabled,
+  showSilhouettes:p.showSilhouettes,
   waterGoalMl:p.waterMode==='auto'?null:Math.round(Number(p.waterLiters.trim().replace(',','.'))*1000),
   targets:{
    calories:Number(p.targets.calories),
@@ -68,7 +74,7 @@ export function ProfileForm({value,onSave,onboarding=false,waterWeightKg}:{value
  const [step,setStep]=useState(0);
  const [error,setError]=useState('');
 
- const update=(key:keyof Omit<DraftProfile,'targets'>,v:string)=>setP(prev=>({...prev,[key]:v}));
+ const update=(key:keyof Omit<DraftProfile,'targets'|'waterTrackingEnabled'|'showSilhouettes'>,v:string)=>setP(prev=>({...prev,[key]:v}));
  const field=(key:'height'|'weight'|'age'|'goalWeight'|'training',label:string,min:number,max:number)=><label className="field">{label}<input required type="number" inputMode={key==='weight'||key==='goalWeight'?'decimal':'numeric'} step={key==='weight'||key==='goalWeight'?'.1':'1'} min={min} max={max} value={p[key]} onChange={e=>update(key,e.target.value)}/></label>;
 
  const stepValid=()=>{
@@ -81,6 +87,7 @@ export function ProfileForm({value,onSave,onboarding=false,waterWeightKg}:{value
   return true;
  };
 
+ const displayControls=<section className="profile-display-settings"><h3>Prikaz i praćenje</h3>{([{key:'waterTrackingEnabled',label:'Praćenje vode',description:'Prikaži vodu, unos vode i karticu Hidratacija. Gašenje čuva unesene podatke.'},{key:'showSilhouettes',label:'Prikaži siluete',description:'Prikaži ljudske siluete uz kalorijski krug. Praćenje unosa radi i bez njih.'}] as const).map(setting=><div className="profile-toggle-row" key={setting.key}><div><b>{setting.label}</b><p>{setting.description}</p></div><button type="button" role="switch" aria-label={setting.label} aria-checked={p[setting.key]} className="profile-toggle" onClick={()=>setP(prev=>({...prev,[setting.key]:!prev[setting.key]}))}><span/></button></div>)}</section>;
  const waterControls=<section className="profile-water-target"><h3>Dnevni cilj vode</h3><p className="muted">Okvirni prijedlog prema težini. Automatski cilj prati zadnju zabilježenu težinu; možeš postaviti i vlastiti cilj.</p><Choice label="Način određivanja cilja vode" value={p.waterMode} onChange={v=>update('waterMode',v)} options={[{value:'auto',label:'Automatski izračun'},{value:'manual',label:'Ručni cilj'}]}/>{p.waterMode==='manual'?<label className="field">Dnevni cilj vode (L)<input required type="text" inputMode="decimal" value={p.waterLiters} onChange={e=>update('waterLiters',e.target.value)} aria-label="Dnevni cilj vode (L)" aria-describedby="water-goal-hint"/><small id="water-goal-hint">Od 0,5 do 10 L. Možeš upisati decimalni zarez.</small></label>:<p className="water-goal-preview">Automatski cilj: <b>{fmt(suggestWaterGoalMl(waterWeightKg??(Number(p.weight)||value.weight))/1000,2)} L dnevno</b></p>}<button type="button" className="text-button" onClick={()=>{const weight=Number(p.weight);if(!p.weight||!Number.isFinite(weight)||weight<35||weight>300){setError('Najprije unesi težinu između 35 i 300 kg.');return}setP(prev=>({...prev,waterMode:'manual',waterLiters:String(suggestWaterGoalMl(weight)/1000)}));setError('')}}>Izračunaj prijedlog vode</button></section>;
  const sections=[
   <div key="name"><div className="welcome-mark">K<span>•</span></div><h2>Manje tipkanja.<br/>Više ravnoteže.</h2><p className="muted">Tvoj dnevnik prehrane, tvoj tempo. Postavimo okvirni dnevni cilj.</p><label className="field">Kako se zoveš?<input required maxLength={80} autoComplete="name" value={p.name} onChange={e=>update('name',e.target.value)}/></label></div>,
@@ -89,7 +96,7 @@ export function ProfileForm({value,onSave,onboarding=false,waterWeightKg}:{value
   <div key="age">{field('age','Dob (godine)',18,100)}<p className="muted">Izračun je namijenjen odraslima.</p></div>,
   <div key="activity"><label className="field">Ukupna dnevna aktivnost<Choice label="Aktivnost" value={p.activity} onChange={v=>update('activity',v)} options={[{value:'1.2',label:'Pretežno sjedeći dan'},{value:'1.375',label:'Lagano aktivan'},{value:'1.55',label:'Umjereno aktivan'},{value:'1.725',label:'Vrlo aktivan'},{value:'1.9',label:'Iznimno aktivan'}]}/></label>{field('training','Treninzi tjedno',0,14)}<p className="muted">Aktivnost uključuje i treninge; ne dodajemo ih ponovno.</p></div>,
   <div key="goal"><label className="field">Tvoj cilj<Choice label="Cilj" value={p.goal} onChange={v=>update('goal',v)} options={[{value:'mild',label:'Blagi deficit · −250 kcal'},{value:'moderate',label:'Umjeren deficit · −400 kcal'},{value:'maintain',label:'Održavanje težine'},{value:'gain',label:'Blagi suficit · +200 kcal'}]}/></label></div>,
-  <div key="targets"><p className="eyebrow">TVOJ DNEVNI PLAN</p><h2>{p.targets.calories?fmt(Number(p.targets.calories)):0} <small>kcal</small></h2><p className="muted">Procjena formulom Mifflin–St Jeor i faktorom aktivnosti. Sve ciljeve možeš prilagoditi.</p><div className="form-grid">{macros.map(k=><label className="field" key={k}>{t(k)} {k==='calories'?'(kcal)':'(g)'}<input type="number" inputMode="decimal" required min={k==='calories'?800:0} max={k==='calories'?8000:k==='carbs'?1200:500} value={p.targets[k]} onChange={e=>setP(prev=>({...prev,targets:{...prev.targets,[k]:e.target.value}}))}/></label>)}</div><button type="button" className="text-button" onClick={()=>{const parsed=parseDraft(p);if(!parsed.success){setError('Najprije ispuni osobne podatke.');return}const targets=suggestTargets(parsed.data);setP(prev=>({...prev,targets:{calories:String(targets.calories),protein:String(targets.protein),carbs:String(targets.carbs),fat:String(targets.fat)}}));setError('')}}>Ponovno izračunaj prijedlog</button>{waterControls}</div>
+  <div key="targets"><p className="eyebrow">TVOJ DNEVNI PLAN</p><h2>{p.targets.calories?fmt(Number(p.targets.calories)):0} <small>kcal</small></h2><p className="muted">Procjena formulom Mifflin–St Jeor i faktorom aktivnosti. Sve ciljeve možeš prilagoditi.</p><div className="form-grid">{macros.map(k=><label className="field" key={k}>{t(k)} {k==='calories'?'(kcal)':'(g)'}<input type="number" inputMode="decimal" required min={k==='calories'?800:0} max={k==='calories'?8000:k==='carbs'?1200:500} value={p.targets[k]} onChange={e=>setP(prev=>({...prev,targets:{...prev.targets,[k]:e.target.value}}))}/></label>)}</div><button type="button" className="text-button" onClick={()=>{const parsed=parseDraft(p);if(!parsed.success){setError('Najprije ispuni osobne podatke.');return}const targets=suggestTargets(parsed.data);setP(prev=>({...prev,targets:{calories:String(targets.calories),protein:String(targets.protein),carbs:String(targets.carbs),fat:String(targets.fat)}}));setError('')}}>Ponovno izračunaj prijedlog</button>{displayControls}{waterControls}</div>
  ];
 
  return <form onSubmit={e=>{
