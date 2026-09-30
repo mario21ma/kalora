@@ -25,7 +25,7 @@ function BodySilhouette({percent,kind}:{percent:number,kind:'food'|'water'}){
  const pct=Number.isFinite(percent)?Math.max(0,Math.min(100,percent)):0;
  const top=8,bottom=294,level=bottom-(bottom-top)*pct/100;
  const bodyId=`${prefix}-body`,fillId=`${prefix}-level`;
- const bodyImage=(state:'empty'|'food'|'water')=><image href={`/silhouettes/body-${state}.png`} x="0" y={top} width="120" height={bottom-top} preserveAspectRatio="none"/>;
+ const bodyImage=(state:'empty'|'food'|'water')=><image href={`/silhouettes/body-${state}-soft.png`} x="0" y={top} width="120" height={bottom-top} preserveAspectRatio="none"/>;
  return <div className={'body-silhouette '+kind} aria-hidden="true" data-fill-percent={pct}><svg viewBox="0 0 120 302" focusable="false"><defs>
   <mask id={bodyId} maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="302" style={{maskType:'alpha'}}>{bodyImage('empty')}</mask>
   <clipPath id={fillId}><rect x="0" y={level} width="120" height={bottom-level}/></clipPath>
@@ -33,7 +33,7 @@ function BodySilhouette({percent,kind}:{percent:number,kind:'food'|'water'}){
   <g className="body-shell">{bodyImage('empty')}</g>
   <g mask={`url(#${bodyId})`}><g clipPath={`url(#${fillId})`} className="body-filled-content">
    {bodyImage(kind)}
-   {kind==='water'&&<g className="water-art">{Array.from({length:16},(_,i)=><circle key={i} className="body-bubble" cx={i%2===0?46+(i%3)*3:73-(i%3)*3} cy={bottom-9-i*16} r={i%3===0?2.2:1.2}/>)}
+   {kind==='water'&&<g className="water-art">{Array.from({length:8},(_,i)=><circle key={i} className="body-bubble" cx={i%2===0?46+(i%3)*3:73-(i%3)*3} cy={bottom-12-i*34} r={i%3===0?1.9:1.1}/>)}
     {pct>0&&pct<100&&<><path className="body-wave soft" d={`M0 ${level+5} Q15 ${level+11} 30 ${level+5} T60 ${level+5} T90 ${level+5} T120 ${level+5}`}/><path className="body-wave" d={`M0 ${level+2} Q15 ${level+5} 30 ${level+2} T60 ${level+2} T90 ${level+2} T120 ${level+2}`}/></>}
    </g>}
    {pct>0&&pct<100&&<path className="body-surface" d={`M0 ${level+.8} H120`}/>}

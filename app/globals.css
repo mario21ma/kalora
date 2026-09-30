@@ -480,11 +480,12 @@ body{background:var(--bg)}
   .body-silhouette.food{grid-column:1;grid-row:1;color:#ffe59b}
   .body-silhouette.water{grid-column:3;grid-row:1;color:#b6f6ff}
   .body-silhouette svg{display:block;width:calc(100% + 20px);height:100%;margin-left:-10px;overflow:hidden}
-  .body-shell{opacity:.9;filter:brightness(.58) contrast(1.1)}
-  .body-silhouette.food .body-shell{filter:sepia(.5) saturate(.7) brightness(.6) contrast(1.1)}
-  .body-surface{fill:none;stroke:currentColor;stroke-opacity:.65;stroke-width:.8}
-  .body-wave{fill:none;stroke:#e1fcff;stroke-width:1.6;stroke-linecap:round}
-  .body-wave.soft{stroke:#64dcff;stroke-opacity:.5;stroke-width:1.2}
+  .body-shell{opacity:.66;filter:brightness(.9) saturate(.75)}
+  .body-silhouette.food .body-shell{filter:sepia(.25) saturate(.7) brightness(.88)}
+  .body-filled-content{opacity:.84;filter:saturate(.85) brightness(.92)}
+  .body-surface{fill:none;stroke:currentColor;stroke-opacity:.55;stroke-width:.75}
+  .body-wave{fill:none;stroke:#d8f7ff;stroke-width:1.2;stroke-linecap:round}
+  .body-wave.soft{stroke:#64dcff;stroke-opacity:.35;stroke-width:1}
   .water-art .body-bubble{fill:#28b4ef;fill-opacity:.16;stroke:#c5f8ff;stroke-opacity:.8;stroke-width:.6}
   .water-summary{position:relative;z-index:4;margin:4px 0 12px;color:#36c0ff;font-size:.87rem;text-shadow:0 1px 8px rgba(0,0,0,.35)}
   .water-summary b span{color:#eef7ff}
