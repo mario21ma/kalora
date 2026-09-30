@@ -473,31 +473,19 @@ body{background:var(--bg)}
 @media(max-width:760px){
   .energy-card{background:radial-gradient(circle at 82% 18%,rgba(255,157,84,.3),transparent 26%),radial-gradient(circle at 16% 28%,rgba(120,160,255,.26),transparent 30%),linear-gradient(180deg,#4561b4 0%,#c77870 39%,#0e325d 72%,#081628 100%);border:1px solid rgba(158,195,255,.15);box-shadow:0 20px 40px rgba(3,8,23,.35),inset 0 1px 0 rgba(255,255,255,.08)}
   .energy-card .section-top{margin-bottom:2px}.energy-card .section-top h2{display:none}.energy-card .section-top .icon-button{margin-left:auto;background:rgba(255,255,255,.12);color:#edf6ff;border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px)}
-  .energy-content{display:grid!important;grid-template-columns:minmax(0,1fr) 184px minmax(0,1fr)!important;align-items:center!important;gap:2px!important;margin:-4px -3px 7px!important;min-height:270px}
+  .energy-content{display:grid!important;grid-template-columns:minmax(0,1fr) 184px minmax(0,1fr)!important;align-items:center!important;gap:2px!important;margin:-4px -3px 7px!important;min-height:290px}
   .energy-content .calorie-ring{grid-column:2;grid-row:1;width:184px!important;height:184px!important;flex-basis:184px!important;z-index:3}
   .energy-content .energy-detail{display:none!important}
-  .body-silhouette{display:block;position:relative;width:100%;min-width:0;height:260px;z-index:2;pointer-events:none}
-  .body-silhouette.food{grid-column:1;grid-row:1;color:#ffd077}
-  .body-silhouette.water{grid-column:3;grid-row:1;color:#7edfff}
-  .body-silhouette svg{display:block;width:100%;height:100%;overflow:hidden}
-  .body-shell{opacity:.8}
-  .body-outline{fill:none;stroke:currentColor;stroke-opacity:.8;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
-  .body-anatomy{fill:none;stroke:currentColor;stroke-opacity:.24;stroke-width:.85;stroke-linecap:round;stroke-linejoin:round}
-  .body-fill{opacity:.84}
-  .food-art .food-vine{fill:none;stroke:#b5e36b;stroke-width:1.2;stroke-linecap:round}
-  .food-art .food-leaf{fill:#65b933;stroke:#c5ed6f;stroke-width:.55}
-  .food-art .food-leaf.light{fill:#a4d349}
-  .food-art .food-vein{fill:none;stroke:#e6ef93;stroke-opacity:.6;stroke-width:.55}
-  .food-art .food-apple{stroke:#ffd17d;stroke-width:.7}
-  .food-art .food-apple-shine{fill:none;stroke:#ffe0a3;stroke-opacity:.7;stroke-width:1.5;stroke-linecap:round}
-  .food-art .food-stem{fill:none;stroke:#dfb357;stroke-width:1.5;stroke-linecap:round}
-  .food-art .food-wheat{fill:none;stroke:#ffe396;stroke-width:1.2;stroke-linecap:round}
-  .food-art .food-grain{fill:#efc454;stroke:#ffe99a;stroke-width:.5}
-  .body-surface{fill:none;stroke:currentColor;stroke-opacity:.75;stroke-width:1}
-  .water-art .water-current{fill:none;stroke:#9ff3ff;stroke-opacity:.25;stroke-width:1}
-  .body-wave{fill:none;stroke:#d5faff;stroke-width:1.6;stroke-linecap:round}
-  .body-wave.soft{stroke:#76e9ff;stroke-opacity:.55;stroke-width:1}
-  .water-art .body-bubble{fill:#168ee1;fill-opacity:.35;stroke:#b6f4ff;stroke-opacity:.85;stroke-width:.65}
+  .body-silhouette{display:block;position:relative;width:100%;min-width:0;height:280px;z-index:2;pointer-events:none}
+  .body-silhouette.food{grid-column:1;grid-row:1;color:#ffe59b}
+  .body-silhouette.water{grid-column:3;grid-row:1;color:#b6f6ff}
+  .body-silhouette svg{display:block;width:calc(100% + 20px);height:100%;margin-left:-10px;overflow:hidden}
+  .body-shell{opacity:.9;filter:brightness(.58) contrast(1.1)}
+  .body-silhouette.food .body-shell{filter:sepia(.5) saturate(.7) brightness(.6) contrast(1.1)}
+  .body-surface{fill:none;stroke:currentColor;stroke-opacity:.65;stroke-width:.8}
+  .body-wave{fill:none;stroke:#e1fcff;stroke-width:1.6;stroke-linecap:round}
+  .body-wave.soft{stroke:#64dcff;stroke-opacity:.5;stroke-width:1.2}
+  .water-art .body-bubble{fill:#28b4ef;fill-opacity:.16;stroke:#c5f8ff;stroke-opacity:.8;stroke-width:.6}
   .water-summary{position:relative;z-index:4;margin:4px 0 12px;color:#36c0ff;font-size:.87rem;text-shadow:0 1px 8px rgba(0,0,0,.35)}
   .water-summary b span{color:#eef7ff}
   .macro-grid{position:relative;z-index:4;gap:18px;margin:0 0 18px}
@@ -515,4 +503,4 @@ body{background:var(--bg)}
   .hydration-actions .small-note{max-width:none}
   .water-quick-buttons{gap:8px}.water-quick-buttons button{min-height:44px;border-radius:15px;font-size:.72rem;padding:0 6px;background:rgba(8,31,57,.45)}
 }
-@media(max-width:380px){.energy-content{grid-template-columns:minmax(0,1fr) 170px minmax(0,1fr)!important}.energy-content .calorie-ring{width:170px!important;height:170px!important;flex-basis:170px!important}.body-silhouette{height:246px}.water-quick-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.water-quick-buttons button{font-size:.68rem}.hydration-card{padding-inline:14px}}
+@media(max-width:380px){.energy-content{grid-template-columns:minmax(0,1fr) 170px minmax(0,1fr)!important}.energy-content .calorie-ring{width:170px!important;height:170px!important;flex-basis:170px!important}.body-silhouette{height:266px}.water-quick-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.water-quick-buttons button{font-size:.68rem}.hydration-card{padding-inline:14px}}
