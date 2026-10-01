@@ -1,0 +1,35 @@
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {initialState,stateSchema,makeWaterEntry,withWaterEntries} from '../lib/domain.ts';
+const {PGlite}=await import(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to authenticated;grant execute on function auth.uid() to authenticated;`);
+await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
+const a='00000000-0000-4000-8000-000000000001',b='00000000-0000-4000-8000-000000000002',date='2026-10-01';
+await db.query('insert into auth.users values($1),($2)',[a,b]);
+const login=async id=>{await db.exec('reset role;set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id])};
+const save=async(s,rev)=>(await db.query('select save_diary($1::jsonb,$2) as result',[JSON.stringify(s),rev])).rows[0].result;
+const load=async()=>(await db.query('select load_diary() as result')).rows[0].result;
+const old=initialState();delete old.waterEntries;old.water={[date]:1080,'2026-09-30':750};delete old.items[0].loggedAt;
+await login(a);await save(old,0);
+await login(b);await save(initialState(false),0);
+await db.exec('reset role');
+const migration=await readFile(new URL('../supabase/water_entries_migration.sql',import.meta.url),'utf8');
+await db.exec(migration);await db.exec(migration);
+await login(a);let cloud=await load();assert.equal(cloud.revision,1);assert.equal(cloud.state.water[date],1080);assert.equal(cloud.state.waterEntries.length,2);assert.equal(cloud.state.waterEntries[0].loggedAt,null);assert.equal(cloud.state.items.length,7);
+assert.equal((await db.query('select ml from daily_water where date=$1',[date])).rows[0].ml,1080);
+let s=stateSchema.parse(cloud.state);const prior=s.waterEntries.find(e=>e.date==='2026-09-30');const entries=[250,330,500].map((ml,i)=>makeWaterEntry(ml,date,new Date(`2026-10-01T0${6+i}:42:00.000Z`)));
+s=withWaterEntries(s,[prior,...entries]);s.items[0].loggedAt='2026-10-01T06:31:00.000Z';await save(s,1);
+cloud=await load();assert.equal(cloud.state.water[date],1080);assert.equal(cloud.state.items[0].loggedAt,s.items[0].loggedAt);
+for(const entry of entries){const saved=cloud.state.waterEntries.find(e=>e.id===entry.id);assert.equal(new Date(saved.loggedAt).getTime(),new Date(entry.loggedAt).getTime())}
+s=withWaterEntries(s,s.waterEntries.filter(e=>e.id!==entries[1].id));s.water[date]=9999;await save(s,2);cloud=await load();assert.equal(cloud.state.water[date],750);assert.equal(cloud.state.waterEntries.length,3);assert.equal((await db.query('select ml from daily_water where date=$1',[date])).rows[0].ml,750);
+await assert.rejects(()=>save(s,2),/CONFLICT/);assert.equal((await load()).revision,3);
+const invalid=structuredClone(s);invalid.waterEntries[0].amountMl=0;await assert.rejects(()=>save(invalid,3));assert.equal((await load()).state.water[date],750);assert.equal((await load()).revision,3);
+await assert.rejects(()=>save({...s,waterEntries:undefined},3),/Ažuriraj/);
+await login(b);assert.equal((await db.query('select * from water_entries')).rows.length,0);await assert.rejects(()=>db.query('insert into water_entries values($1,$2,$3,250,now())',['intruder',a,date]),/row-level security/);assert.deepEqual((await load()).state.waterEntries,[]);
+await db.exec('reset role;set role anon');await assert.rejects(()=>db.query('select * from water_entries'),/permission denied/);await assert.rejects(()=>load(),/permission denied/);
+await login(a);s=withWaterEntries(s,[]);await save(s,3);assert.deepEqual((await load()).state.waterEntries,[]);assert.deepEqual((await load()).state.water,{});
+await db.exec('reset role');await db.exec(migration);await login(a);assert.deepEqual((await load()).state.waterEntries,[]); // rerunning cannot resurrect deleted entries
+await db.exec('reset role');await db.query('delete from auth.users where id=$1',[a]);assert.equal((await db.query('select * from water_entries')).rows.length,0);
+console.log('PASS: legacy migration and repeat safety, food/water timestamps, save/load/delete 1080→750, derived totals, conflict/rollback, cross-user RLS, anonymous denial, no resurrection, account deletion cascade');
+await db.close();
