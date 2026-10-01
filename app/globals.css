@@ -581,3 +581,28 @@ body{background:var(--bg)}
 .calorie-ring .ring-label span{font-size:7cqw;line-height:1.2;white-space:nowrap}
 .calorie-ring .ring-label small{font-size:6.2cqw;line-height:1.2;margin:0;white-space:nowrap}
 .calorie-ring .ring-label .ring-percent{font-size:5.4cqw;line-height:1.2;margin:0;white-space:nowrap}
+
+/* Today: consistent card spacing and a quieter backdrop for the calorie total. */
+.dashboard-grid{gap:20px}
+.dashboard-grid>.right-stack{gap:20px!important}
+.dashboard-grid .meal-list{gap:16px}
+.dashboard-grid .energy-card,.dashboard-grid .ai-card,.dashboard-grid .meal-card,.dashboard-grid .hydration-card{border-radius:20px}
+.dashboard-grid .section-top{margin-bottom:16px}
+.dashboard-grid .meal-heading{gap:12px}
+.dashboard-grid .hydration-card{padding:16px 20px}
+.calorie-ring .ring-label strong,.calorie-ring .ring-label span,.calorie-ring .ring-label small{font-variant-numeric:tabular-nums}
+.calorie-ring .ring-label strong{font-weight:750}
+.calorie-ring .ring-label span{color:#e3edf8}
+.calorie-ring .ring-label small{color:#c4d3e4}
+.calorie-ring .ring-label .ring-percent{color:#7edbff}
+@media(max-width:760px){
+ .dashboard-grid{gap:16px}
+ .dashboard-grid>.right-stack{gap:16px!important}
+ .dashboard-grid .meal-list{gap:12px}
+ .dashboard-grid .energy-card{padding:16px}
+ .dashboard-grid .energy-card>.section-top{margin-bottom:4px}
+ .dashboard-grid .meal-card{padding-inline:16px}
+ .dashboard-grid .hydration-card{padding:16px}
+ .calorie-ring::before{content:"";position:absolute;inset:13%;border-radius:50%;background:radial-gradient(ellipse,rgba(5,18,34,.66) 0%,rgba(5,18,34,.4) 42%,rgba(5,18,34,0) 74%);pointer-events:none}
+ .calorie-ring .ring-label{text-shadow:0 1px 5px rgba(0,0,0,.45)}
+}
