@@ -569,5 +569,6 @@ body{background:var(--bg)}
 .history-meal-items .entry-time{margin-top:4px}
 .history-hydration.history-meal{padding-top:0;margin-top:18px;overflow:hidden}
 .history-meal-icon.hydration{color:#36b9ff;background:rgba(37,134,255,.1)}
+.swipe-delete{display:inline-flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
 .history-hydration #history-water-entries{padding:0 14px 2px}
 .history-hydration .history-meal-summary>b{white-space:nowrap;font-size:.82rem}
