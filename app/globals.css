@@ -583,6 +583,11 @@ body{background:var(--bg)}
 .calorie-ring .ring-label .ring-percent{font-size:5.4cqw;line-height:1.2;margin:0;white-space:nowrap}
 
 /* Today: consistent card spacing and a quieter backdrop for the calorie total. */
+.stat-card.water{--stat-color:#48c6ff;--stat-rgb:72,198,255;grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;min-height:134px}
+.stat-card.water .stat-card-head{grid-column:1 / -1}
+.stat-card.water>b{grid-column:1;white-space:nowrap}
+.water-stat-note{grid-column:2;align-self:end;position:relative;z-index:2;color:#94a3b8;font-size:.76rem;line-height:1.5;text-align:right;margin-top:16px}
+@media(max-width:760px){.stat-card.water{min-height:132px}.water-stat-note{font-size:.68rem;line-height:1.4}.stat-card.water small{font-size:.7rem}}
 .dashboard-grid{gap:20px}
 .dashboard-grid>.right-stack{gap:20px!important}
 .dashboard-grid .meal-list{gap:16px}

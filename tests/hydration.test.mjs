@@ -1,7 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {hydrationStats} from '../lib/hydration-stats.ts';
 import {stateSchema,initialState,makeWaterEntry,withWaterEntries,waterForDate,waterTotal,undoWaterChange,loggedTime,itemSchema,makeItem,baseFoods} from '../lib/domain.ts';
 const date='2026-10-01';
+test('water averages use water-log days independently of food days',()=>{
+ const entries=[makeWaterEntry(500,date),makeWaterEntry(1000,date),makeWaterEntry(2500,'2026-09-30'),makeWaterEntry(9000,'2026-09-01')];
+ assert.deepEqual(hydrationStats(entries,[date,'2026-09-30','2026-09-29']),{loggedDays:2,totalMl:4000,averageMl:2000});
+ assert.deepEqual(hydrationStats(entries,[date,date]),{loggedDays:1,totalMl:1500,averageMl:1500});
+ assert.deepEqual(hydrationStats(entries,['2026-09-29']),{loggedDays:0,totalMl:0,averageMl:null});
+ assert.equal(hydrationStats(entries.filter(e=>e.amountMl!==1000),[date,'2026-09-30']).averageMl,1500);
+ const old=initialState(false);delete old.waterEntries;old.water[date]=1350;
+ assert.equal(hydrationStats(stateSchema.parse(old).waterEntries,[date]).averageMl,1350);
+});
 test('legacy water totals migrate once without invented timestamps',()=>{const old=initialState(false);delete old.waterEntries;old.water={[date]:1080,'2026-09-30':750,'2026-09-29':0};const migrated=stateSchema.parse(old);assert.equal(migrated.waterEntries.length,2);assert.equal(migrated.waterEntries[0].loggedAt,null);assert.equal(migrated.waterEntries[0].id,'legacy-water-'+date);assert.deepEqual(stateSchema.parse(JSON.parse(JSON.stringify(migrated))),migrated);assert.equal(waterTotal(migrated.waterEntries,date),1080)});
 test('every water click has its own id and real timestamp, independent of diary date',()=>{const now=new Date('2026-10-01T11:44:31.123Z');const a=makeWaterEntry(250,'2026-09-30',now),b=makeWaterEntry(250,'2026-09-30',now);assert.notEqual(a.id,b.id);assert.equal(a.loggedAt,now.toISOString());assert.equal(a.date,'2026-09-30');assert.equal(loggedTime(a.loggedAt),'13:44')});
 test('delete 330 ml from 1080 leaves 750 and preserves other dates',()=>{let s=initialState(false);const entries=[250,330,500].map(ml=>makeWaterEntry(ml,date));const other=makeWaterEntry(100,'2026-09-30');s=withWaterEntries(s,[...entries,other]);assert.equal(s.water[date],1080);s=withWaterEntries(s,s.waterEntries.filter(e=>e.id!==entries[1].id));assert.equal(waterTotal(s.waterEntries,date),750);assert.equal(s.water[date],750);assert.equal(s.water['2026-09-30'],100);assert.equal(waterForDate(s.waterEntries,date).length,2)});
