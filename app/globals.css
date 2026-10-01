@@ -574,6 +574,53 @@ body{background:var(--bg)}
 .history-hydration .history-meal-summary>b{white-space:nowrap;font-size:.82rem}
 
 /* Keep every calorie label inside the ring as its diameter changes. */
+/* Optional accent skins. Nutrition colors, water, and backgrounds stay semantic. */
+:root{--skin-color:#48c6ff;--skin-rgb:72,198,255;--skin-ink:#07131f;--skin-gradient:linear-gradient(100deg,#6b55ff,#3f86ff 48%,#24d9d4);--skin-home-ink:#fff}
+:root[data-skin=green]{--skin-color:#35df9c;--skin-rgb:53,223,156;--skin-gradient:linear-gradient(100deg,#36bc84,#35df9c 58%,#92f3c5);--skin-home-ink:#07131f}
+:root[data-skin=yellow]{--skin-color:#ffdb63;--skin-rgb:255,219,99;--skin-gradient:linear-gradient(100deg,#edbc3e,#ffdb63 58%,#ffecaa);--skin-home-ink:#07131f}
+:root[data-skin=red]{--skin-color:#ff8388;--skin-rgb:255,131,136;--skin-gradient:linear-gradient(100deg,#eb6872,#ff8388 58%,#ffbcc0);--skin-home-ink:#07131f}
+:root[data-skin=white]{--skin-color:#edf3ff;--skin-rgb:237,243,255;--skin-gradient:linear-gradient(100deg,#c9d4e6,#edf3ff 58%,#fff);--skin-home-ink:#07131f}
+[data-skin] .primary{background:var(--skin-color);color:var(--skin-ink)}
+[data-skin] .home-add-button{background:var(--skin-gradient)!important;color:var(--skin-home-ink);box-shadow:0 10px 26px rgba(var(--skin-rgb),.18)}
+[data-skin] .text-button{color:var(--skin-color)}
+[data-skin] .secondary:not(.home-water-confirm){color:var(--skin-color);background:rgba(var(--skin-rgb),.1)}
+[data-skin] .profile-toggle[aria-checked=true]::before{background:var(--skin-color);border-color:var(--skin-color)}
+[data-skin] .profile-toggle[aria-checked=true] span{background:var(--skin-ink)}
+[data-skin] button:focus-visible,[data-skin] a:focus-visible{outline-color:var(--skin-color)}
+[data-skin] input:focus,[data-skin] textarea:focus{border-color:var(--skin-color);box-shadow:0 0 0 3px rgba(var(--skin-rgb),.12)}
+[data-skin] .water-amount-value input:focus{border-color:#2caeff;box-shadow:inset 0 0 0 1px #2caeff}
+[data-skin] .calorie-ring .ring-fill{stroke:var(--skin-color);filter:drop-shadow(0 0 5px rgba(var(--skin-rgb),.3))}
+[data-skin] .calorie-ring .ring-label .ring-percent,[data-skin] .energy-stat{color:var(--skin-color)}
+[data-skin] .calendar-grid .calendar-ring-fill{stroke:var(--skin-color);filter:drop-shadow(0 0 5px rgba(var(--skin-rgb),.2))}
+[data-skin] .side-tabs [role=tab][data-state=active]{color:var(--skin-color);background:rgba(var(--skin-rgb),.1)}
+[data-skin] .history-range button.active{color:var(--skin-color);background:rgba(var(--skin-rgb),.1);box-shadow:inset 0 0 0 1px rgba(var(--skin-rgb),.3)}
+[data-skin] .history-meal.open{border-color:rgba(var(--skin-rgb),.45);background:color-mix(in srgb,var(--surface) 94%,var(--skin-color) 6%)}
+[data-skin] .history-meal.open .history-meal-chevron{color:var(--skin-color)}
+.skin-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.skin-option{min-width:0;text-align:left;padding:10px;border:1px solid var(--line);border-radius:14px;background:#0a1522;transition:border-color .15s,box-shadow .15s}
+.skin-option[aria-checked=true]{border-color:var(--preview-accent);box-shadow:0 0 0 1px var(--preview-accent),0 4px 16px color-mix(in srgb,var(--preview-accent) 13%,transparent)}
+.skin-preview{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:center;min-height:54px;padding:10px 8px;border-radius:9px;background:#101e30}
+.skin-preview-ring{grid-row:1 / 3;width:28px;height:28px;border:3px solid #243349;border-top-color:var(--preview-accent);border-right-color:var(--preview-accent);border-bottom-color:var(--preview-accent);border-radius:50%}
+.skin-preview-line{height:4px;border-radius:4px;background:#4a5a70}
+.skin-preview-button{height:10px;border-radius:4px;background:var(--preview-accent);box-shadow:0 0 10px color-mix(in srgb,var(--preview-accent) 20%,transparent)}
+.skin-option-name{display:flex;align-items:center;justify-content:space-between;gap:3px;margin-top:10px;color:#eef5ff;font-size:.8rem;font-weight:650}
+.skin-option-name svg{color:var(--preview-accent)}
+.skin-option>small{display:block;color:#a2b1c4;font-size:.66rem;margin-top:4px;line-height:1.4}
+.today-meal-heading{gap:4px!important;padding-block:0;min-height:76px}
+.today-meal-toggle{display:flex;align-items:center;gap:9px;flex:1;min-width:0;min-height:76px;padding:12px 0;text-align:left}
+.today-meal-title{flex:1;min-width:0}
+.today-meal-title>b{display:block;font-size:.9rem;font-weight:650}
+.today-meal-title>small{display:block;margin-top:5px;color:var(--muted);font-size:.68rem;line-height:1.35}
+.today-meal-summary{text-align:right;flex-shrink:0;font-size:.78rem;font-variant-numeric:tabular-nums}
+.today-meal-summary>small{display:block;color:var(--muted);font-size:.65rem;margin-top:3px}
+.today-meal-chevron{flex-shrink:0;color:var(--muted);transition:transform .18s}
+.today-meal-chevron.open{transform:rotate(180deg);color:var(--skin-color)}
+.today-meal-toggle:hover .today-meal-title>b{color:var(--skin-color)}
+.today-meal-heading>.icon-button{min-height:44px}
+.empty-meal .today-meal-heading,.empty-meal .today-meal-toggle{min-height:66px}
+.today-meal-empty{padding:0 0 16px}
+@media(max-width:380px){.skin-picker{grid-template-columns:repeat(2,minmax(0,1fr))}.today-meal-toggle{gap:6px}.today-meal-title>b{font-size:.81rem}.today-meal-heading .meal-icon{width:32px;height:32px;flex-basis:32px}.today-meal-summary{font-size:.72rem}}
+@media(prefers-reduced-motion:reduce){.skin-option,.today-meal-chevron{transition:none}}
 .calorie-ring{container-type:inline-size}
 .calorie-ring .ring-label{inset:18% 14%;gap:.8cqw}
 .calorie-ring .ring-label>svg{width:9cqw;height:9cqw;margin:0;flex-shrink:0}

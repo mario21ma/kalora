@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {hydrationStats} from '../lib/hydration-stats.ts';
 import {stateSchema,initialState,makeWaterEntry,withWaterEntries,waterForDate,waterTotal,undoWaterChange,loggedTime,itemSchema,makeItem,baseFoods} from '../lib/domain.ts';
 const date='2026-10-01';
+test('accent skins default safely and survive export/import without changing diary entries',()=>{
+ const old=initialState(false);delete old.profile.accentTheme;
+ assert.equal(stateSchema.parse(old).profile.accentTheme,'blue');
+ for(const accentTheme of ['blue','green','yellow','red','white']){
+  const s=withWaterEntries(initialState(false),[makeWaterEntry(330,date)]);s.profile.accentTheme=accentTheme;s.items=[makeItem(baseFoods[0],120,'breakfast',date)];
+  const imported=stateSchema.parse(JSON.parse(JSON.stringify(s)));
+  assert.equal(imported.profile.accentTheme,accentTheme);assert.deepEqual(imported.items,s.items);assert.deepEqual(imported.waterEntries,s.waterEntries);
+ }
+ assert.equal(stateSchema.safeParse({...old,profile:{...old.profile,accentTheme:'unknown'}}).success,false);
+});
 test('water averages use water-log days independently of food days',()=>{
  const entries=[makeWaterEntry(500,date),makeWaterEntry(1000,date),makeWaterEntry(2500,'2026-09-30'),makeWaterEntry(9000,'2026-09-01')];
  assert.deepEqual(hydrationStats(entries,[date,'2026-09-30','2026-09-29']),{loggedDays:2,totalMl:4000,averageMl:2000});

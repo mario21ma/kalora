@@ -115,7 +115,7 @@ export function ProfileForm({value,onSave,onboarding=false,waterWeightKg}:{value
   }
   const parsed=parseDraft(p,value.waterGoalMl);
   if(!parsed.success){setError('Provjeri sva polja i dopuštene raspone.');return}
-  onSave(parsed.data);
+  onSave({...parsed.data,accentTheme:value.accentTheme});
  }}>
   {onboarding?<><div className="steps">{sections.map((_,i)=><span key={i} className={i<=step?'done':''}/>)}</div>{sections[step]}</>:<div className="profile-fields">{sections}</div>}
   {error&&<p role="alert" className="error">{error}</p>}
