@@ -1,5 +1,6 @@
 import {z} from 'zod';
-import {State,stateSchema} from './domain';
+import {stateSchema} from './domain';
+import type {State} from './domain';
 
 type AuthContext={
  authenticated:boolean;
@@ -7,41 +8,28 @@ type AuthContext={
  headers?:Record<string,string>;
 };
 
-export const anonymousAiEnabled=()=>process.env.ALLOW_ANONYMOUS_AI!=='false';
-const anonymousQuota=new Map<string,{windowStart:number,count:number}>();
-function consumeAnonymousQuota(req:Request){
- const forwarded=req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||req.headers.get('x-real-ip')||'local';
- const now=Date.now(),hour=60*60*1000,current=anonymousQuota.get(forwarded);
- if(!current||now-current.windowStart>=hour){anonymousQuota.set(forwarded,{windowStart:now,count:1});return}
- if(current.count>=40)throw new Error('Dosegnut je privremeni limit AI zahtjeva. Pokušaj za sat vremena.');
- current.count+=1;
-}
+export {anonymousAiEnabled} from './ai-rate-limit';
+import {consumeAiQuota,AiHttpError} from './ai-rate-limit';
 
 export const configuredAiModel=()=>process.env.OPENAI_MODEL||'gpt-6-luna';
 
 export async function authorize(req:Request):Promise<AuthContext>{
  if(!process.env.OPENAI_API_KEY)throw new Error('AI procjena još nije povezana. Postavi OPENAI_API_KEY na poslužitelju.');
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,authorization=req.headers.get('authorization');
- const hasCloud=!!(url&&key);
- if(!authorization?.startsWith('Bearer ')){
-  if(!anonymousAiEnabled())throw new Error('Za AI se najprije prijavi u aplikaciju.');
-  consumeAnonymousQuota(req);
+ if(!authorization){
+  await consumeAiQuota(req);
   return {authenticated:false};
  }
- if(!hasCloud){
-  if(!anonymousAiEnabled())throw new Error('Prijava za AI nije dostupna dok Supabase nije povezan.');
-  consumeAnonymousQuota(req);
-  return {authenticated:false};
- }
- const headers={apikey:key!,Authorization:authorization,'Content-Type':'application/json'};
- const r=await fetch(url!+'/auth/v1/user',{headers,cache:'no-store'});
- if(!r.ok){
-  if(anonymousAiEnabled()){consumeAnonymousQuota(req);return {authenticated:false}};
-  throw new Error('Prijava je istekla. Prijavi se ponovno.');
- }
- const rate=await fetch(url!+'/rest/v1/rpc/consume_ai_quota',{method:'POST',headers,body:'{}'});
- if(!rate.ok||!(await rate.json()))throw new Error('Dosegnut je limit AI zahtjeva. Pokušaj za sat vremena.');
- return {authenticated:true,url:url!,headers};
+ if(!authorization.startsWith('Bearer '))throw new AiHttpError('Sesija je istekla. Prijavi se ponovno.',401);
+ if(!url||!key)throw new AiHttpError('Prijava za AI trenutačno nije dostupna.',503);
+ const headers={apikey:key,Authorization:authorization,'Content-Type':'application/json'};
+ let r:Response;
+ try{r=await fetch(url+'/auth/v1/user',{headers,cache:'no-store',signal:AbortSignal.timeout(8000)})}catch{throw new AiHttpError('Provjera prijave trenutačno nije dostupna.',503)}
+ if(!r.ok)throw new AiHttpError(r.status===401||r.status===403?'Sesija je istekla. Prijavi se ponovno.':'Provjera prijave trenutačno nije dostupna.',r.status===401||r.status===403?401:503);
+ const user=await r.json().catch(()=>null);
+ if(typeof user?.id!=='string'||! /^[0-9a-f-]{36}$/i.test(user.id))throw new AiHttpError('Provjera prijave trenutačno nije dostupna.',503);
+ await consumeAiQuota(req,user.id);
+ return {authenticated:true,url,headers};
 }
 
 export async function userState(auth:AuthContext):Promise<State>{
@@ -63,7 +51,7 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
   max_output_tokens:3000,
   text:{format:{type:'json_schema',name:'food_result',strict:true,schema:jsonSchema}}
  };
- if(options?.webSearch)requestBody.tools=[{type:'web_search',search_context_size:'low'}];
+ if(options?.webSearch){requestBody.tools=[{type:'web_search',search_context_size:'low'}];requestBody.max_tool_calls=1;}
  if(/^(gpt-[56]|o\d)/.test(model))requestBody.reasoning={effort:process.env.OPENAI_REASONING_EFFORT||'low'};
  const r=await fetch('https://api.openai.com/v1/responses',{
   method:'POST',
@@ -72,9 +60,7 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
   signal:AbortSignal.timeout(45000)
  });
  if(!r.ok){
-  let detail='';
-  try{const d=await r.json();detail=d?.error?.message?` (${d.error.message})`:''}catch{}
-  throw new Error('AI trenutno nije dostupan. Pokušaj ponovno.'+detail);
+  throw new Error('AI trenutno nije dostupan. Pokušaj ponovno.');
  }
  const d=await r.json();
  if(d.status==='incomplete')throw new Error('AI odgovor nije dovršen. Skrati unos i pokušaj ponovno.');
@@ -83,4 +69,4 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
 }
 
 export async function safeBody(req:Request){const raw=await req.text();if(raw.length>50000)throw new Error('Unos je predug.');return JSON.parse(raw)}
-export const errorResponse=(e:unknown)=>Response.json({error:e instanceof z.ZodError?'Podaci nisu valjani. Provjeri unos.':e instanceof Error?e.message:'Zahtjev nije uspio.'},{status:400});
+export const errorResponse=(e:unknown)=>Response.json({error:e instanceof z.ZodError?'Podaci nisu valjani. Provjeri unos.':e instanceof Error?e.message:'Zahtjev nije uspio.'},{status:e instanceof AiHttpError?e.status:400,headers:{'Cache-Control':'no-store',...(e instanceof AiHttpError&&e.retryAfter?{'Retry-After':String(e.retryAfter)}:{})}});
