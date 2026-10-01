@@ -572,3 +572,12 @@ body{background:var(--bg)}
 .swipe-delete{display:inline-flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
 .history-hydration #history-water-entries{padding:0 14px 2px}
 .history-hydration .history-meal-summary>b{white-space:nowrap;font-size:.82rem}
+
+/* Keep every calorie label inside the ring as its diameter changes. */
+.calorie-ring{container-type:inline-size}
+.calorie-ring .ring-label{inset:18% 14%;gap:.8cqw}
+.calorie-ring .ring-label>svg{width:9cqw;height:9cqw;margin:0;flex-shrink:0}
+.calorie-ring .ring-label strong{font-size:20cqw;line-height:1.05;letter-spacing:-.6cqw;white-space:nowrap}
+.calorie-ring .ring-label span{font-size:7cqw;line-height:1.2;white-space:nowrap}
+.calorie-ring .ring-label small{font-size:6.2cqw;line-height:1.2;margin:0;white-space:nowrap}
+.calorie-ring .ring-label .ring-percent{font-size:5.4cqw;line-height:1.2;margin:0;white-space:nowrap}
