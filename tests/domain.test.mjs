@@ -1,7 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {baseFoods,parseLocal,sum,makeItem,nutrition,stateSchema,initialState,dayOffset,dateKey,suggestTargets,defaultProfile,resolveWaterGoalMl,suggestWaterGoalMl,profileSchema} from '../lib/domain.ts';
+import {baseFoods,parseLocal,sum,makeItem,nutrition,stateSchema,initialState,dayOffset,dateKey,suggestTargets,defaultProfile,resolveWaterGoalMl,suggestWaterGoalMl,profileSchema,searchAlias} from '../lib/domain.ts';
 const date='2026-09-28';
+test('long AI meal names can be saved and restored with their cached food',()=>{
+ const name='Piletina sa sirom u tortilji s kiselim krastavcima, kukuruzom i tartar umakom';
+ const food={id:'ai-tortilja',name,brand:'',aliases:[name.toLowerCase()],serving:350,calories:220,protein:39/3.5,carbs:18,fat:40/3.5,fiber:0,source:'AI procjena nutritivnih vrijednosti; nije provjereno',verified:false};
+ const state=initialState(false);state.foods=[food];state.items=[makeItem(food,350,'lunch',date,false)];
+ const saved=stateSchema.parse(state);const restored=stateSchema.parse(JSON.parse(JSON.stringify(saved)));
+ assert.equal(restored.items[0].name,name);assert.equal(restored.foods[0].aliases[0],name.toLowerCase());assert.equal(sum(restored.items).calories,770);
+ assert.equal(nutrition(makeItem(restored.foods[0],175,'dinner',date)).calories,385);assert.deepEqual(restored.waterEntries,[]);
+});
+test('full product search aliases fit legal names and brands but remain bounded',()=>{
+ const state=initialState(false);const food={...baseFoods[0],name:'n'.repeat(150),brand:'b'.repeat(100),aliases:['b'.repeat(100)+' '+'n'.repeat(150)]};
+ state.foods=[food];assert.equal(stateSchema.safeParse(state).success,true);
+ food.aliases=['x'.repeat(501)];assert.equal(stateSchema.safeParse(state).success,false);
+});
+test('500-character names save across AI, web and manual sources without losing units or totals',()=>{
+ const name=('Dugi naziv obroka sa sastojcima '.repeat(20)).slice(0,500);
+ for(const source of ['AI procjena nutritivnih vrijednosti','Web provjerena deklaracija proizvoda','Deklaracija koju je unio korisnik']){
+  const food={...baseFoods[0],name,aliases:[searchAlias(name)],brand:'Primjer',unit:'ml',source};
+  const state=initialState(false);state.foods=[food];state.items=[makeItem(food,250,'lunch',date,false)];
+  const restored=stateSchema.parse(JSON.parse(JSON.stringify(state)));
+  assert.equal(restored.foods[0].name,name);assert.equal(restored.items[0].name,name);assert.equal(restored.items[0].unit,'ml');assert.equal(nutrition(restored.items[0]).calories,222.5);
+  food.name=name+'x';assert.equal(stateSchema.safeParse({...state,foods:[food]}).success,false);
+  assert.equal(stateSchema.safeParse({...state,items:[{...state.items[0],name:name+'x'}]}).success,false);
+ }
+ assert.equal(searchAlias('한'.repeat(500)).length,500);
+});
 test('Croatian breakfast with half, spoon and whey',()=>{const r=parseLocal('1 banana, pola avokada, 100 g zobenih i 1 mjerica whey hydro izolata',baseFoods,'breakfast',date);assert.equal(r.items.length,4);assert.deepEqual(r.unknown,[]);assert.equal(r.items.find(i=>i.foodId==='avocado').grams,75);assert.equal(r.items.find(i=>i.foodId==='oats').grams,100);assert.equal(r.items.find(i=>i.foodId==='whey').grams,30)});
 test('stuffed peppers, estimated portion, exact bread',()=>{const r=parseLocal('ručak: 3 srednje punjene paprike i oko 60 g bijelog kruha',baseFoods,'snack',date);assert.deepEqual(r.items.map(i=>i.grams),[660,60]);assert.ok(r.items.every(i=>i.meal==='lunch'));assert.ok(r.items.every(i=>i.isEstimate));assert.equal(Math.round(sum(r.items).calories),1018)});
 test('unknown items are not fabricated or silently accepted',()=>{const r=parseLocal('banana i plutonijev sendvič',baseFoods,'snack',date);assert.equal(r.items.length,1);assert.deepEqual(r.unknown,['plutonijev sendvic'])});

@@ -1,14 +1,14 @@
 import {createHash} from 'node:crypto';
 import {z} from 'zod';
 import {authorize,userState,structured,safeBody,errorResponse} from '@/lib/ai-server';
-import {baseFoods,makeItem,mealTypes,nutritionSchema,Food,norm,foodSchema} from '@/lib/domain';
+import {baseFoods,makeItem,mealTypes,nutritionSchema,Food,norm,searchAlias,foodSchema} from '@/lib/domain';
 export const runtime='nodejs';
 
 const answer=z.object({
  meal:z.enum(mealTypes),
  items:z.array(z.object({
   foodId:z.string().nullable(),
-  name:z.string().min(1).max(150),
+  name:z.string().min(1).max(500),
   grams:z.number().positive().max(5000),
   isEstimate:z.boolean(),
   basis:nutritionSchema,
@@ -17,7 +17,7 @@ const answer=z.object({
  unknown:z.array(z.string().max(200)).max(40)
 });
 const numeric={type:'number'};
-const schema={type:'object',additionalProperties:false,required:['meal','items','unknown'],properties:{meal:{type:'string',enum:mealTypes},unknown:{type:'array',items:{type:'string'}},items:{type:'array',items:{type:'object',additionalProperties:false,required:['foodId','name','grams','isEstimate','basis','sourceType'],properties:{foodId:{type:['string','null']},name:{type:'string'},grams:numeric,isEstimate:{type:'boolean'},sourceType:{type:'string',enum:['catalog','web','estimate']},basis:{type:'object',additionalProperties:false,required:['calories','protein','carbs','fat'],properties:{calories:numeric,protein:numeric,carbs:numeric,fat:numeric}}}}}}};
+const schema={type:'object',additionalProperties:false,required:['meal','items','unknown'],properties:{meal:{type:'string',enum:mealTypes},unknown:{type:'array',items:{type:'string'}},items:{type:'array',items:{type:'object',additionalProperties:false,required:['foodId','name','grams','isEstimate','basis','sourceType'],properties:{foodId:{type:['string','null']},name:{type:'string',minLength:1,maxLength:500},grams:numeric,isEstimate:{type:'boolean'},sourceType:{type:'string',enum:['catalog','web','estimate']},basis:{type:'object',additionalProperties:false,required:['calories','protein','carbs','fat'],properties:{calories:numeric,protein:numeric,carbs:numeric,fat:numeric}}}}}}};
 
 const aiFoodId=(name:string)=>'ai-'+createHash('sha256').update(norm(name)).digest('hex').slice(0,20);
 
@@ -65,7 +65,7 @@ Odgovori samo prema zadanoj JSON shemi.`,
     id:aiFoodId(i.name),
     name:i.name,
     brand:'',
-    aliases:[norm(i.name)],
+    aliases:[searchAlias(i.name)],
     serving:i.grams,
     ...i.basis,
     fiber:0,

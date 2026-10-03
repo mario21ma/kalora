@@ -24,5 +24,5 @@ export function offProduct(p:Record<string,any>){
  // For drinks offer the bottle/can amount. Do not multiply a multipack.
  const multi=/\d+\s*[x×]/i.test(String(p.quantity??''));
  const serving=(unit==='ml'&&!multi?measure(p.quantity,unit):null)??measure(p.serving_size,unit)??(unit==='ml'?250:100);
- return {name:String(p.product_name).slice(0,150),brand:String(p.brands??'').split(',')[0].trim().slice(0,100),unit,serving,calories,protein,carbs,fat,fiber:Number.isFinite(fiber)&&fiber>=0&&fiber<=10000?fiber:0};
+ return {name:String(p.product_name).slice(0,500),brand:String(p.brands??'').split(',')[0].trim().slice(0,100),unit,serving,calories,protein,carbs,fat,fiber:Number.isFinite(fiber)&&fiber>=0&&fiber<=10000?fiber:0};
 }
