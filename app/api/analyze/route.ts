@@ -39,7 +39,7 @@ export async function POST(req:Request){
   const result=await structured(answer,schema,
    `Pretvori hrvatski opis hrane u strukturirane stavke za dnevnik prehrane.
 Glavno pravilo: ako opis predstavlja prepoznatljivu hranu, jelo ili piće, OBAVEZNO ga procijeni čak i ako nije u katalogu. Ne traži od korisnika ručni unos nutritivnih vrijednosti.
-- Ako je točan proizvod već u dostavljenom katalogu, koristi njegov foodId i sourceType="catalog". Ne izmišljaj foodId.
+- Ako je točan proizvod već u dostavljenom katalogu, koristi njegov foodId i sourceType="catalog". Ne izmišljaj foodId. Za kataloški proizvod unit="ml" polje grams predstavlja broj mililitara i basis je na 100 ml. Ne pretvaraj ml u g; zadrži jedinicu kataloga. Bez unit ili uz unit="g", grams je broj grama.
 - Ako tekst izgleda kao BRNDIRANI/KOMERCIJALNI proizvod (proizvođač, marka ili točan naziv proizvoda), OBAVEZNO prvo koristi web-pretragu prije nutritivne procjene.
 - Za brendirani proizvod pretraži puni naziv proizvoda zajedno s izrazima poput "nutritivne vrijednosti", "nutrition 100 g" ili "deklaracija". Prednost daj službenoj stranici proizvođača, zatim pouzdanoj stranici trgovca koja prikazuje deklaraciju baš tog proizvoda.
 - Ne koristi podatke s drugog okusa, varijante, pakiranja ili sličnog proizvoda ako nije jasno da je ista deklaracija.

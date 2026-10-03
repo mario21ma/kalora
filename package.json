@@ -10,7 +10,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/ai-rate-limit.test.mjs tests/hydration.test.mjs",
+    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/ai-rate-limit.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs",
     "ios:add": "cap add ios",
     "ios:sync": "cap sync ios",
     "ios:open": "cap open ios",

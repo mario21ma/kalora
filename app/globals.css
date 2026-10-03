@@ -658,3 +658,7 @@ body{background:var(--bg)}
  .calorie-ring::before{content:"";position:absolute;inset:13%;border-radius:50%;background:radial-gradient(ellipse,rgba(5,18,34,.66) 0%,rgba(5,18,34,.4) 42%,rgba(5,18,34,0) 74%);pointer-events:none}
  .calorie-ring .ring-label{text-shadow:0 1px 5px rgba(0,0,0,.45)}
 }
+.barcode-camera{position:relative;overflow:hidden;border-radius:18px;background:#000;aspect-ratio:4/3}
+.barcode-camera video{width:100%;height:100%;object-fit:cover}
+.barcode-frame{position:absolute;left:10%;right:10%;top:28%;height:44%;border:2px solid rgba(255,255,255,.9);border-radius:14px;box-shadow:0 0 0 999px rgba(0,0,0,.25);pointer-events:none}
+.barcode-scan-line{position:absolute;left:4%;right:4%;top:50%;height:2px;transform:translateY(-50%);background:#ff454f;box-shadow:0 0 9px rgba(255,69,79,.7);border-radius:2px}

@@ -5,10 +5,13 @@ export const macros = ['calories','protein','carbs','fat'] as const;
 export type Nutrients = Record<typeof macros[number],number>;
 const n = z.number().finite().min(0).max(10000);
 export const nutritionSchema = z.object({calories:n,protein:n,carbs:n,fat:n});
-export const foodSchema = nutritionSchema.extend({id:z.string().max(100),name:z.string().min(1).max(150),brand:z.string().max(100),aliases:z.array(z.string().max(60)).max(20),serving:z.number().positive().max(5000),fiber:n,source:z.string().max(200),verified:z.boolean()});
+export const quantityUnit=(value:{unit?:'g'|'ml'})=>value.unit??'g';
+export const foodSchema = nutritionSchema.extend({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),name:z.string().min(1).max(150),brand:z.string().max(100),aliases:z.array(z.string().max(60)).max(20),serving:z.number().positive().max(5000),fiber:n,source:z.string().max(200),verified:z.boolean()});
 export type Food = z.infer<typeof foodSchema>;
 const timestampSchema=z.string().datetime({offset:true}).nullable();
-export const itemSchema = z.object({id:z.string().max(100),foodId:z.string().max(100),name:z.string().min(1).max(150),grams:z.number().positive().max(5000),meal:z.enum(mealTypes),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),isEstimate:z.boolean(),basis:nutritionSchema,source:z.string().max(200),loggedAt:timestampSchema.optional().default(null)});
+// Legacy `grams` stores the numeric quantity; `unit` also defines the basis per 100.
+// Missing unit remains grams. Never relabel or convert old diary entries implicitly.
+export const itemSchema = z.object({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),foodId:z.string().max(100),name:z.string().min(1).max(150),grams:z.number().positive().max(5000),meal:z.enum(mealTypes),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),isEstimate:z.boolean(),basis:nutritionSchema,source:z.string().max(200),loggedAt:timestampSchema.optional().default(null)});
 export type Item = z.infer<typeof itemSchema>;
 export const targetSchema = nutritionSchema.extend({calories:z.number().min(800).max(8000),protein:z.number().min(0).max(500),carbs:z.number().min(0).max(1200),fat:z.number().min(0).max(500)});
 export const profileSchema=z.object({accentTheme:z.enum(['blue','green','yellow','red','white']).default('blue'),name:z.string().min(1).max(80),sex:z.enum(['male','female']),age:z.number().min(18).max(100),height:z.number().min(100).max(230),weight:z.number().min(35).max(300),goalWeight:z.number().min(35).max(300),activity:z.number().min(1.2).max(1.9),training:z.number().min(0).max(14),goal:z.enum(['mild','moderate','maintain','gain']),targets:targetSchema,waterGoalMl:z.number().int().min(500).max(10000).nullable().optional(),waterTrackingEnabled:z.boolean().default(true),showSilhouettes:z.boolean().default(true)});
@@ -48,7 +51,7 @@ export const norm=(s:string)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-
 export const nutrition=(i:Item):Nutrients=>Object.fromEntries(macros.map(k=>[k,i.basis[k]*i.grams/100])) as Nutrients;
 export const sum=(items:Item[]):Nutrients=>items.reduce((s,i)=>{const a=nutrition(i);for(const k of macros)s[k]+=a[k];return s},{calories:0,protein:0,carbs:0,fat:0});
 export const fmt=(n:number,d=0)=>n.toLocaleString('hr-HR',{maximumFractionDigits:d});
-export function makeItem(food:Food,grams:number,meal:MealType,date:string,isEstimate=true):Item{return {id:uid(),foodId:food.id,name:food.brand?`${food.name} · ${food.brand}`:food.name,grams,meal,date,isEstimate,basis:{calories:food.calories,protein:food.protein,carbs:food.carbs,fat:food.fat},source:food.source,loggedAt:new Date().toISOString()}}
+export function makeItem(food:Food,grams:number,meal:MealType,date:string,isEstimate=true):Item{return {id:uid(),foodId:food.id,name:food.brand?`${food.name} · ${food.brand}`:food.name,grams,...(food.unit?{unit:food.unit}:{}),meal,date,isEstimate,basis:{calories:food.calories,protein:food.protein,carbs:food.carbs,fat:food.fat},source:food.source,loggedAt:new Date().toISOString()}}
 export const baseFoods:Food[]=[
 ['banana','Banana',['banan'],120,89,1.1,22.8,.3,2.6],
 ['avocado','Avokado',['avokad'],150,160,2,8.5,14.7,6.7],
@@ -82,8 +85,8 @@ export function parseLocal(text:string,foods:Food[],meal:MealType,date:string){
  const chunks=normalized.replace(/\b(po jeo|pojeo sam|dodaj|dorucak|rucak|vecera)\s*:?/g,'').split(/[,;+]|\s+i\s+/).map(s=>s.trim()).filter(Boolean);
  const unknown:string[]=[],items:Item[]=[];
  for(const s of chunks){const food=[...foods].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length),b.name.length)-Math.max(...a.aliases.map(x=>x.length),a.name.length)).find(f=>[norm(f.name),...f.aliases.map(norm)].some(a=>s.includes(a)));
- if(!food){unknown.push(s);continue} const gram=s.match(/(\d+(?:\.\d+)?)\s*(kg|g|grama|gr|ml|mililitara)\b/);let grams=food.serving,isEstimate=true;
- if(gram){grams=Number(gram[1])*(gram[2]==='kg'?1000:1);isEstimate=/oko|otprilike/.test(s)}else{const count=s.match(/\b(\d+(?:\.\d+)?)\b/);const number=count?Number(count[1]):/\bdvije\b|\bdva\b/.test(s)?2:/\btri\b/.test(s)?3:1;grams*=number;if(/pola|polovic/.test(s))grams/=2;if(/velik/.test(s))grams*=1.25;if(/mal[oa]/.test(s))grams*=.7;if(/zlicic/.test(s))grams=5*number;else if(/zlic/.test(s))grams=15*number;}
+ if(!food){unknown.push(s);continue} const gram=s.match(/(\d+(?:\.\d+)?)\s*(kg|g|grama|gr|ml|mililitara|cl|dl|l)\b/);let grams=food.serving,isEstimate=true;
+ if(gram){const volume=['ml','mililitara','cl','dl','l'].includes(gram[2]);if(food.unit&&volume!==(food.unit==='ml')){unknown.push(s);continue}grams=Number(gram[1])*({kg:1000,cl:10,dl:100,l:1000}[gram[2]]??1);isEstimate=/oko|otprilike/.test(s)}else{const count=s.match(/\b(\d+(?:\.\d+)?)\b/);const number=count?Number(count[1]):/\bdvije\b|\bdva\b/.test(s)?2:/\btri\b/.test(s)?3:1;grams*=number;if(/pola|polovic/.test(s))grams/=2;if(/velik/.test(s))grams*=1.25;if(/mal[oa]/.test(s))grams*=.7;if(/zlicic/.test(s))grams=5*number;else if(/zlic/.test(s))grams=15*number;}
  if(grams>0&&grams<=5000)items.push(makeItem(food,grams,inferred as MealType,date,isEstimate));else unknown.push(s);
  }return {items,unknown,mode:'local' as const};
 }
