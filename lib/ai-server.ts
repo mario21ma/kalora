@@ -41,7 +41,26 @@ export async function userState(auth:AuthContext):Promise<State>{
  return stateSchema.parse(d.state);
 }
 
-export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instructions:string,input:unknown,options?:{webSearch?:boolean}):Promise<T>{
+// A model's JSON source claim is not evidence that a web search ran. Keep only
+// URLs supplied by completed tool calls/citations, separate from model output.
+function sourceUrl(value:unknown):string|null{
+ if(typeof value!=='string'||value.length>2048)return null;
+ try{const url=new URL(value);if(!['https:','http:'].includes(url.protocol)||url.username||url.password)return null;return url.href}catch{return null}
+}
+function webSources(output:unknown):string[]{
+ if(!Array.isArray(output)||!output.some(o=>o?.type==='web_search_call'&&o.status==='completed'))return [];
+ const urls=new Set<string>();
+ const add=(value:unknown)=>{const url=sourceUrl(value);if(url&&urls.size<10)urls.add(url)};
+ for(const entry of output){
+  if(entry?.type==='web_search_call'&&entry.status==='completed'&&Array.isArray(entry.action?.sources))for(const source of entry.action.sources)add(source?.url);
+  if(entry?.type==='message'&&Array.isArray(entry.content))for(const content of entry.content){
+   if(content?.type==='output_text'&&Array.isArray(content.annotations))for(const annotation of content.annotations)if(annotation?.type==='url_citation')add(annotation.url);
+  }
+ }
+ return [...urls];
+}
+
+export async function structuredWithSources<T>(schema:z.ZodType<T>,jsonSchema:object,instructions:string,input:unknown,options?:{webSearch?:boolean}):Promise<{data:T;sourceUrls:string[]}>{
  const model=configuredAiModel();
  const requestBody:Record<string,unknown>={
   model,
@@ -51,7 +70,7 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
   max_output_tokens:3000,
   text:{format:{type:'json_schema',name:'food_result',strict:true,schema:jsonSchema}}
  };
- if(options?.webSearch){requestBody.tools=[{type:'web_search',search_context_size:'low'}];requestBody.max_tool_calls=1;}
+ if(options?.webSearch){requestBody.tools=[{type:'web_search',search_context_size:'low'}];requestBody.max_tool_calls=1;requestBody.include=['web_search_call.action.sources'];}
  if(/^(gpt-[56]|o\d)/.test(model))requestBody.reasoning={effort:process.env.OPENAI_REASONING_EFFORT||'low'};
  const r=await fetch('https://api.openai.com/v1/responses',{
   method:'POST',
@@ -65,8 +84,10 @@ export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instru
  const d=await r.json();
  if(d.status==='incomplete')throw new Error('AI odgovor nije dovršen. Skrati unos i pokušaj ponovno.');
  const output=d.output?.flatMap((o:{content?:{type:string,text?:string}[]})=>o.content||[]).filter((c:{type:string})=>c.type==='output_text').map((c:{text:string})=>c.text).join('');
- return schema.parse(JSON.parse(output||'{}'));
+ return {data:schema.parse(JSON.parse(output||'{}')),sourceUrls:options?.webSearch?webSources(d.output):[]};
 }
+
+export async function structured<T>(schema:z.ZodType<T>,jsonSchema:object,instructions:string,input:unknown,options?:{webSearch?:boolean}):Promise<T>{return (await structuredWithSources(schema,jsonSchema,instructions,input,options)).data}
 
 export async function safeBody(req:Request){const raw=await req.text();if(raw.length>50000)throw new Error('Unos je predug.');return JSON.parse(raw)}
 export const errorResponse=(e:unknown)=>Response.json({error:e instanceof z.ZodError?'Podaci nisu valjani. Provjeri unos.':e instanceof Error?e.message:'Zahtjev nije uspio.'},{status:e instanceof AiHttpError?e.status:400,headers:{'Cache-Control':'no-store',...(e instanceof AiHttpError&&e.retryAfter?{'Retry-After':String(e.retryAfter)}:{})}});

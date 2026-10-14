@@ -1,5 +1,6 @@
 // OFF's normalized *_100g fields mean per 100 ml for liquids.
 // https://openfoodfacts.github.io/documentation/docs/Product-Opener/schemas/schemas/product_nutrition/
+import {foodBasisSchema} from './domain.ts';
 const numeric=(v:unknown)=>typeof v==='number'?v:typeof v==='string'&&v.trim()!==''?Number(v):NaN;
 function measure(text:unknown,unit:'g'|'ml'){
  const value=String(text??'').toLowerCase().replace(/,/g,'.');
@@ -20,9 +21,12 @@ export function offProduct(p:Record<string,any>){
  if(!Number.isFinite(calories)){const kj=Number.isFinite(read('energy-kj'))?read('energy-kj'):read('energy');if(Number.isFinite(kj))calories=kj/4.184;}
  const protein=read('proteins'),carbs=read('carbohydrates'),fat=read('fat'),fiber=read('fiber');
  if(!p.product_name)throw new Error('Proizvod postoji, ali nema upisan naziv.');
- if(![calories,protein,carbs,fat].every(v=>Number.isFinite(v)&&v>=0&&v<=10000))throw new Error('Proizvod postoji, ali nutritivni podaci nisu dovoljno potpuni.');
+ // Validate new external nutrition only. Existing diary/backup schemas remain
+ // permissive so historical user data is never discarded during an upgrade.
+ const basis=foodBasisSchema.safeParse({unit,calories,protein,carbs,fat,...(Number.isFinite(fiber)?{fiber}:{})});
+ if(!basis.success)throw new Error('Proizvod postoji, ali nutritivni podaci nisu dovoljno potpuni ili nisu valjani.');
  // For drinks offer the bottle/can amount. Do not multiply a multipack.
  const multi=/\d+\s*[x×]/i.test(String(p.quantity??''));
  const serving=(unit==='ml'&&!multi?measure(p.quantity,unit):null)??measure(p.serving_size,unit)??(unit==='ml'?250:100);
- return {name:String(p.product_name).slice(0,500),brand:String(p.brands??'').split(',')[0].trim().slice(0,100),unit,serving,calories,protein,carbs,fat,fiber:Number.isFinite(fiber)&&fiber>=0&&fiber<=10000?fiber:0};
+ return {name:String(p.product_name).slice(0,500),brand:String(p.brands??'').split(',')[0].trim().slice(0,100),unit,serving,calories,protein,carbs,fat,fiber:Number.isFinite(fiber)?fiber:0};
 }

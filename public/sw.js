@@ -1,29 +1,78 @@
-const CACHE='kalora-shell-v4';
-// Publish a cached page only after all of its startup scripts are available.
-async function saveShell(cache,response,key='/'){
+const CACHE='kalora-shell-v5';
+const PAGES=new Set(['/','/privacy','/terms']);
+const PUBLIC_ASSETS=new Set(['/manifest.json','/icon-192.png','/icon-512.png','/icon-maskable.png','/apple-touch-icon.png']);
+const publicResponse=response=>response.ok&&!response.redirected&&!/\bprivate\b/i.test(response.headers.get('Cache-Control')||'')&&!/(?:^|,)\s*(?:Cookie|Authorization|\*)\s*(?:,|$)/i.test(response.headers.get('Vary')||'');
+async function savePublicAssets(cache,urls){
+ // cache.addAll does not inspect Cache-Control/Vary. Check every asset before
+ // storing any of them, including the install-time manifest and icons.
+ const resources=await Promise.all([...urls].map(async url=>{
+  const response=await fetch(url,{cache:'reload'});
+  if(!publicResponse(response))throw new Error('Kalora public asset is unavailable');
+  return [url,response];
+ }));
+ await Promise.all(resources.map(([url,response])=>cache.put(url,response)));
+}
+
+// Publish a cached document only after all of its startup assets are available.
+// Callers pass an unused copy: the original network body belongs to the browser.
+async function savePage(cache,response,key){
+ if(!publicResponse(response)||!/text\/html/i.test(response.headers.get('Content-Type')||''))throw new Error('Kalora public page is unavailable');
  const html=await response.clone().text(),assets=new Set();
  for(const match of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)){
   const url=new URL(match[1],self.location.origin);
   if(url.origin===self.location.origin&&url.pathname.startsWith('/_next/static/'))assets.add(url.href);
  }
- if(!assets.size)throw new Error('Kalora shell contains no application assets');
- await cache.addAll([...assets]);
- await cache.put(key,response.clone());
+ if(!assets.size)throw new Error('Kalora page contains no application assets');
+ // Never publish a shell with an unavailable or private startup asset.
+ await savePublicAssets(cache,assets);
+ await cache.put(key,response);
 }
+
 self.addEventListener('install',e=>{e.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
- await cache.addAll(['/manifest.json','/icon-192.png','/icon-512.png','/apple-touch-icon.png']);
- const shell=await fetch('/',{cache:'reload'});
- if(!shell.ok)throw new Error('Kalora shell is unavailable');
- await saveShell(cache,shell);
+ await savePublicAssets(cache,PUBLIC_ASSETS);
+ for(const key of PAGES){
+  const page=await fetch(key,{cache:'reload'});
+  await savePage(cache,page,key);
+ }
+ // A failed new installation never activates or deletes the last working cache.
  await self.skipWaiting();
 })())});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('kalora-shell-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||e.request.headers.get('RSC'))return;if(e.request.mode==='navigate'){
- const network=fetch(e.request);
- e.waitUntil(network.then(async r=>{if(r.ok&&u.pathname==='/')await saveShell(await caches.open(CACHE),r)}).catch(()=>{}));
- e.respondWith(network.catch(async()=>{const cache=await caches.open(CACHE);return (await cache.match(e.request))||(await cache.match('/'))}));return
-}if(u.pathname.startsWith('/_next/static/')||/\.(png|woff2|css|js)$/.test(u.pathname)){
- const resource=caches.open(CACHE).then(async c=>{const hit=await c.match(e.request);if(hit)return hit;const r=await fetch(e.request);if(r.ok)await c.put(e.request,r.clone());return r});
- e.respondWith(resource);e.waitUntil(resource.then(()=>{}).catch(()=>{}));
-} });
+
+self.addEventListener('activate',e=>{e.waitUntil((async()=>{
+ await Promise.all((await caches.keys()).filter(k=>k.startsWith('kalora-shell-')&&k!==CACHE).map(k=>caches.delete(k)));
+ await self.clients.claim();
+})())});
+
+function offlinePage(){
+ return new Response('<!doctype html><html lang="hr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Kalora · Izvan mreže</title><main><h1>Stranica nije dostupna izvan mreže</h1><p>Poveži se s internetom i pokušaj ponovno.</p><a href="/">Natrag u Kaloru</a></main></html>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+}
+
+self.addEventListener('fetch',e=>{
+ const u=new URL(e.request.url);
+ if(e.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||e.request.headers.get('Authorization')||e.request.headers.get('RSC')||u.searchParams.has('_rsc'))return;
+ if(e.request.mode==='navigate'){
+  const publicPage=PAGES.has(u.pathname)&&!u.search;
+  const network=fetch(e.request);
+  e.waitUntil(network.then(r=>{
+   if(!r.ok||!publicPage)return;
+   // Clone synchronously before caches.open() can yield and respondWith consumes r.
+   const page=r.clone();
+   return caches.open(CACHE).then(cache=>savePage(cache,page,u.pathname));
+  }).catch(()=>{}));
+  e.respondWith(network.catch(async()=>{
+   if(publicPage){const cached=await (await caches.open(CACHE)).match(u.pathname);if(cached)return cached}
+   return offlinePage();
+  }));
+  return;
+ }
+ if(u.pathname.startsWith('/_next/static/')||PUBLIC_ASSETS.has(u.pathname)||/^\/silhouettes\/[a-z0-9-]+\.png$/.test(u.pathname)){
+  const resource=caches.open(CACHE).then(async cache=>{
+   const hit=await cache.match(e.request);if(hit)return hit;
+   const response=await fetch(e.request);
+   if(publicResponse(response))await cache.put(e.request,response.clone());
+   return response;
+  });
+  e.respondWith(resource);e.waitUntil(resource.then(()=>{}).catch(()=>{}));
+ }
+});

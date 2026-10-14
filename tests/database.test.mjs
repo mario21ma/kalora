@@ -11,7 +11,7 @@ await db.exec('set role authenticated');
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[a]);
 const s=initialState();
 let r=await db.query('select save_diary($1::jsonb,0) as saved',[JSON.stringify(s)]);assert.equal(r.rows[0].saved.revision,1);
-r=await db.query('select load_diary() as result');assert.equal(r.rows[0].result.state.items.length,7);assert.equal(r.rows[0].result.state.profile.name,'Mario');
+r=await db.query('select load_diary() as result');assert.equal(r.rows[0].result.state.items.length,7);assert.deepEqual(r.rows[0].result.state.profile,s.profile);
 await assert.rejects(()=>db.query('select save_diary($1::jsonb,0)',[JSON.stringify(s)]),/CONFLICT/);
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[b]);
 r=await db.query('select * from profiles');assert.equal(r.rows.length,0);

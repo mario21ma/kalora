@@ -10,16 +10,21 @@
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/ai-rate-limit.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs",
+    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/diary-store.test.mjs tests/undo.test.mjs tests/quantity.test.mjs tests/ai-rate-limit.test.mjs tests/ai-input.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs tests/scanner.test.mjs",
     "ios:add": "cap add ios",
     "ios:sync": "cap sync ios",
     "ios:open": "cap open ios",
-    "ios:run": "cap run ios"
+    "ios:run": "cap run ios",
+    "test:database": "node --test tests/database.test.mjs tests/hydration-database.test.mjs tests/ai-rate-limit-database.test.mjs tests/account-deletion-database.test.mjs",
+    "test:browser": "node --test --test-concurrency=1 tests/browser-regressions.mjs tests/pwa-deploy.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
     "@hookform/resolvers": "^5.7.1",
     "@shadcn/react": "^0.3.0",
+    "@zxing/browser": "0.2.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
@@ -40,14 +45,13 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "3.6.0",
     "vaul": "^1.1.2",
-    "zod": "^3.25.76",
-    "@capacitor/core": "8.5.2",
-    "@capacitor/ios": "8.5.2",
-    "@zxing/browser": "0.2.1"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.2",
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
@@ -57,14 +61,14 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.4",
+    "playwright": "1.63.0",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "tw-animate-css": "^1.4.0",
     "typescript": "5.9.3",
     "vinext": "1.0.0-beta.5",
     "vite": "8.0.13",
-    "wrangler": "4.92.0",
-    "@capacitor/cli": "8.5.2"
+    "wrangler": "4.92.0"
   },
   "type": "module",
   "overrides": {

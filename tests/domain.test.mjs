@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {baseFoods,parseLocal,sum,makeItem,nutrition,stateSchema,initialState,dayOffset,dateKey,suggestTargets,defaultProfile,resolveWaterGoalMl,suggestWaterGoalMl,profileSchema,searchAlias} from '../lib/domain.ts';
+import {baseFoods,parseLocal,sum,makeItem,nutrition,stateSchema,initialState,dayOffset,dateKey,suggestTargets,defaultProfile,resolveWaterGoalMl,suggestWaterGoalMl,profileSchema,searchAlias,foodBasisSchema,quantityUnit,targetSchema} from '../lib/domain.ts';
 const date='2026-09-28';
 test('long AI meal names can be saved and restored with their cached food',()=>{
  const name='Piletina sa sirom u tortilji s kiselim krastavcima, kukuruzom i tartar umakom';
@@ -43,3 +43,99 @@ test('water targets reject invalid persisted values and accept valid bounds',()=
 
 test('old profiles default to water and silhouettes enabled',()=>{const s=initialState();delete s.profile.waterTrackingEnabled;delete s.profile.showSilhouettes;const restored=stateSchema.parse(s);assert.equal(restored.profile.waterTrackingEnabled,true);assert.equal(restored.profile.showSilhouettes,true)});
 test('display toggles round-trip independently without removing water or goals',()=>{for(const waterTrackingEnabled of [true,false])for(const showSilhouettes of [true,false]){const s=initialState();s.profile.waterTrackingEnabled=waterTrackingEnabled;s.profile.showSilhouettes=showSilhouettes;s.profile.waterGoalMl=3500;s.water[date]=1250;s.waterEntries=[{id:'toggle-water',date,amountMl:1250,loggedAt:'2026-09-28T10:00:00.000Z'}];const restored=stateSchema.parse(JSON.parse(JSON.stringify(s)));assert.equal(restored.profile.waterTrackingEnabled,waterTrackingEnabled);assert.equal(restored.profile.showSilhouettes,showSilhouettes);assert.equal(restored.water[date],1250);assert.equal(restored.profile.waterGoalMl,3500)}});
+
+
+test('explicit volume cannot silently reuse a gram food basis',()=>{
+ for(const text of ['250 ml maslinovog ulja','1 l banana','1 dl avokada']){
+  const result=parseLocal(text,baseFoods,'snack',date);
+  assert.deepEqual(result.items,[],text);assert.equal(result.unknown.length,1,text);
+ }
+ const grams=parseLocal('250 g maslinovog ulja',baseFoods,'snack',date);
+ assert.equal(grams.items[0].grams,250);assert.equal(quantityUnit(grams.items[0]),'g');
+});
+
+test('new milk entries preserve millilitres and volume conversions',()=>{
+ for(const [text,amount] of [['250 ml mlijeka',250],['2.5 dl mlijeka',250],['0,25 l mlijeka',250],['25 cl mlijeka',250],['0,25 litre mlijeka',250]]){
+  const result=parseLocal(text,baseFoods,'breakfast',date);
+  assert.deepEqual(result.unknown,[],text);assert.equal(result.items[0].grams,amount,text);assert.equal(result.items[0].unit,'ml',text);assert.equal(nutrition(result.items[0]).calories,145,text);
+ }
+ const incompatible=parseLocal('250 g mlijeka',baseFoods,'breakfast',date);
+ assert.deepEqual(incompatible.items,[]);assert.equal(incompatible.unknown.length,1);
+});
+
+test('saved implicit gram milk and its history are never relabelled by the new catalog',()=>{
+ const legacyMilk={...baseFoods.find(food=>food.id==='milk')};delete legacyMilk.unit;
+ const state=initialState(false);state.foods=[legacyMilk];state.items=[makeItem(legacyMilk,250,'breakfast',date)];
+ const restored=stateSchema.parse(JSON.parse(JSON.stringify(state)));
+ assert.equal(restored.foods[0].unit,undefined);assert.equal(restored.items[0].unit,undefined);
+ assert.equal(quantityUnit(restored.items[0]),'g');assert.deepEqual(restored.items[0].basis,state.items[0].basis);assert.equal(nutrition(restored.items[0]).calories,145);
+ const parsed=parseLocal('250 ml mlijeka',restored.foods,'breakfast',date);assert.deepEqual(parsed.items,[]);assert.equal(parsed.unknown.length,1);
+});
+
+test('ASCII and Unicode fractions produce the intended portion rather than the numerator',()=>{
+ for(const text of ['1/2 avokada','1 / 2 avokada','½ avokada','pola avokada']){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.unknown,[],text);
+  assert.equal(result.items[0].grams,75,text);assert.equal(nutrition(result.items[0]).calories,120,text);
+ }
+ for(const [text,grams] of [['1 1/2 avokada',225],['1½ avokada',225],['¼ avokada',37.5],['3/4 avokada',112.5],['1/2 kg banana',500],['pola žlice ulja',7.5],['½ žličice ulja',2.5]]){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.unknown,[],text);assert.equal(result.items[0].grams,grams,text);
+ }
+});
+
+test('Croatian count words use the same quantities as digits',()=>{
+ for(const [word,count] of [['jedno',1],['dvije',2],['tri',3],['četiri',4],['pet',5],['šest',6],['sedam',7],['osam',8],['devet',9],['deset',10],['jedanaest',11],['dvadeset dva',22],['dvadeset i dva',22]]){
+  const result=parseLocal(word+' jaja',baseFoods,'breakfast',date);assert.deepEqual(result.unknown,[],word);
+  assert.equal(result.items[0].grams,50*count,word);assert.equal(nutrition(result.items[0]).calories,77.5*count,word);
+ }
+ const half=parseLocal('jedna i pol banana',baseFoods,'breakfast',date);assert.deepEqual(half.unknown,[]);assert.equal(half.items[0].grams,180);
+});
+
+test('malformed and unresolved explicit quantities require clarification instead of one portion',()=>{
+ for(const text of ['1/0 avokada','1/2/3 avokada','-1 banana','2-3 jaja','2 3 jaja','nekoliko jaja','par banana','tridesetak jaja','četiristo jaja','nula banana']){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.items,[],text);assert.equal(result.unknown.length,1,text);
+ }
+});
+
+test('new food validation rejects impossible macros and energy while legacy snapshots remain readable',()=>{
+ for(const basis of [
+  {calories:42,protein:150,carbs:0,fat:0},
+  {calories:42,protein:100,carbs:0,fat:0},
+  {calories:500,protein:50,carbs:50,fat:50},
+  {calories:1001,protein:0,carbs:0,fat:0},
+  {calories:50,protein:-1,carbs:0,fat:0},
+  {calories:50,protein:0,carbs:0,fat:0,fiber:101}
+ ])assert.equal(foodBasisSchema.safeParse(basis).success,false,JSON.stringify(basis));
+ const legacyFood={...baseFoods[0],calories:42,protein:150,carbs:0,fat:0};
+ const state=initialState(false);state.foods=[legacyFood];state.items=[makeItem(legacyFood,100,'snack',date)];
+ const restored=stateSchema.parse(JSON.parse(JSON.stringify(state)));assert.equal(restored.foods[0].protein,150);assert.equal(restored.items[0].basis.protein,150);
+});
+
+test('new food validation permits fibre, alcohol, rounded labels and dense volume declarations',()=>{
+ for(const basis of [
+  {calories:228,protein:19.6,carbs:57.9,fat:13.7,fiber:37},
+  {calories:90,protein:0,carbs:3,fat:0},
+  {calories:884,protein:0,carbs:0,fat:100},
+  {calories:0,protein:0,carbs:.2,fat:0},
+  {unit:'ml',calories:560,protein:0,carbs:140,fat:0}
+ ])assert.equal(foodBasisSchema.safeParse(basis).success,true,JSON.stringify(basis));
+ assert.equal(foodBasisSchema.safeParse({unit:'g',calories:560,protein:0,carbs:140,fat:0}).success,false);
+ assert.equal(foodBasisSchema.safeParse({unit:'ml',calories:700,protein:0,carbs:156,fat:0}).success,false);
+});
+
+test('suggested targets remain valid and balanced for all allowed profile boundary combinations',()=>{
+ for(const sex of ['male','female'])for(const age of [18,100])for(const height of [100,230])for(const weight of [35,250,251,300])for(const activity of [1.2,1.9])for(const goal of ['mild','moderate','maintain','gain']){
+  const profile=profileSchema.parse({...defaultProfile,sex,age,height,weight,activity,goal});
+  const targets=suggestTargets(profile);assert.equal(targetSchema.safeParse(targets).success,true,JSON.stringify(profile));
+  assert.equal(profileSchema.safeParse({...profile,targets}).success,true);assert.ok(Math.abs(targets.protein*4+targets.carbs*4+targets.fat*9-targets.calories)<=4);
+ }
+ const previousFailure=suggestTargets({...defaultProfile,weight:300,height:230,age:18,activity:1.9,goal:'gain'});
+ assert.equal(previousFailure.calories,8000);assert.equal(previousFailure.protein,500);
+});
+
+test('verified source links survive food and item persistence without permitting unsafe URLs',()=>{
+ const food={...baseFoods[0],sourceUrls:['https://example.com/declaration']};
+ const state=initialState(false);state.foods=[food];state.items=[makeItem(food,100,'snack',date)];
+ const restored=stateSchema.parse(JSON.parse(JSON.stringify(state)));
+ assert.deepEqual(restored.foods[0].sourceUrls,food.sourceUrls);assert.deepEqual(restored.items[0].sourceUrls,food.sourceUrls);
+ food.sourceUrls=['javascript:alert(1)'];assert.equal(stateSchema.safeParse({...state,foods:[food]}).success,false);
+});

@@ -1,18 +1,51 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
-import {State,initialState,stateSchema} from './domain';
-import {cloudCall,consumeMagicLink,getSession,session,sessionRecoveryMessage,SessionExpiredError,Session} from './cloud';
-type RecordState={state:State,revision:number,dirty:boolean};
-export function useDiary(){const [state,setState]=useState<State|null>(null),[user,setUser]=useState<Session|null>(null),[status,setStatus]=useState('Na ovom uređaju'),[error,setError]=useState('');const current=useRef<RecordState|null>(null),key=useRef(''),busy=useRef<Promise<void>|null>(null),syncError=useRef<string|null>(null),blocked=useRef(false),generation=useRef(0),[tick,setTick]=useState(0);
- const persist=useCallback((r:RecordState)=>{try{localStorage.setItem(key.current,JSON.stringify(r))}catch{setError('Spremanje na uređaj nije uspjelo. Izvezi kopiju prije zatvaranja aplikacije.')}},[]);
- const sync=useCallback(async()=>{if(blocked.current)throw new Error('Najprije riješi sukob spremljenih podataka.');if(busy.current){await busy.current;if(current.current?.dirty)return sync();return}if(!navigator.onLine||!getSession()||!current.current?.dirty)return;const snapshot=current.current,gen=generation.current;busy.current=(async()=>{try{setStatus('Spremanje…');const result=await cloudCall('save_diary',{document:snapshot.state,expected_revision:snapshot.revision});if(gen!==generation.current)return;if(current.current){current.current={...current.current,revision:result.revision,dirty:current.current!==snapshot};persist(current.current);const recoveredError=syncError.current;if(recoveredError!==null){setError(previous=>previous===recoveredError?'':previous);syncError.current=null}setStatus(current.current.dirty?'Čeka spremanje':'Sinkronizirano');setTick(t=>t+1)}}catch(e){if(gen!==generation.current)return;const message=e instanceof Error?e.message:'Spremanje nije uspjelo';if(message.includes('CONFLICT')){blocked.current=true;setError('Dnevnik je promijenjen na drugom uređaju. Izvezi lokalnu kopiju, zatim učitaj oblak.')}else{syncError.current=message;setError(message)}setStatus('Spremljeno lokalno · čeka vezu');throw e}finally{busy.current=null}})();await busy.current},[persist]);
- const boot=useCallback(async()=>{const gen=++generation.current;setState(null);blocked.current=false;syncError.current=null;setError(sessionRecoveryMessage());try{if(navigator.onLine)await session()}catch(e){if(!(e instanceof SessionExpiredError))setError((e as Error).message)}if(gen!==generation.current)return;const s=getSession();setError(sessionRecoveryMessage());setUser(s);key.current='kalora-v1-'+(s?.user.id||'guest');let local:RecordState|null=null;const raw=localStorage.getItem(key.current);if(raw){try{const parsed=JSON.parse(raw);local={state:stateSchema.parse(parsed.state),revision:Number(parsed.revision)||0,dirty:!!parsed.dirty}}catch{setError('Lokalna kopija nije čitljiva. Sačuvana je; preuzmi je prije ponovnog pokretanja.');blocked.current=true;return}}
- if(s&&navigator.onLine){try{const cloud=await cloudCall('load_diary',{});if(gen!==generation.current)return;if(cloud?.state){if(local?.dirty&&local.revision!==cloud.revision){blocked.current=true;setError('Postoje različite promjene na dva uređaja. Izvezi lokalnu kopiju pa učitaj oblak.')}else if(!local?.dirty)local={state:stateSchema.parse(cloud.state),revision:cloud.revision,dirty:false}}setStatus(local?.dirty?'Čeka spremanje':'Sinkronizirano')}catch(e){if(gen!==generation.current)return;if(e instanceof SessionExpiredError){setError(e.message);setStatus('Potrebna prijava');return}setError('Oblak nije dostupan. Promjene ostaju na ovom uređaju.');setStatus('Izvanmrežni način')}}else setStatus(s?'Izvanmrežni način':'Na ovom uređaju');
- if(gen!==generation.current)return;current.current=local||{state:initialState(false),revision:0,dirty:!!s};persist(current.current);setState(current.current.state);setTick(t=>t+1)},[persist]);
- useEffect(()=>{void (async()=>{let magicError='';try{await consumeMagicLink()}catch(e){magicError=(e as Error).message}await boot();if(magicError)setError(magicError)})();const auth=()=>{void boot()};window.addEventListener('authchange',auth);return()=>window.removeEventListener('authchange',auth)},[boot]);
- useEffect(()=>{if(!state||!getSession()||!current.current?.dirty||blocked.current)return;const id=setTimeout(()=>{void sync().catch(()=>{})},900);return()=>clearTimeout(id)},[state,tick,sync]);
- useEffect(()=>{const online=()=>{void sync().catch(()=>{})};window.addEventListener('online',online);return()=>window.removeEventListener('online',online)},[sync]);
- const update=useCallback((fn:(s:State)=>State)=>{if(!current.current)return;const next=stateSchema.parse(fn(current.current.state));current.current={...current.current,state:next,dirty:true};persist(current.current);setState(next);setStatus(getSession()?'Čeka spremanje':'Spremljeno na uređaju')},[persist]);
- const reloadCloud=async()=>{if(!getSession())return;const gen=generation.current;try{const r=await cloudCall('load_diary',{});if(gen!==generation.current)return;if(!r?.state)throw new Error('Oblak još nema spremljen dnevnik.');current.current={state:stateSchema.parse(r.state),revision:r.revision,dirty:false};blocked.current=false;persist(current.current);setState(current.current.state);setStatus('Sinkronizirano');setError('')}catch(e){if(gen===generation.current)setError((e as Error).message)}};
- return {state,user,status,error,setError,update,sync,reloadCloud};
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { type State } from './domain';
+import { consumeMagicLink, StaleSessionError, subscribeAuth } from './cloud';
+import { DiaryStore } from './diary-store';
+
+export function useDiary() {
+  const storeRef = useRef<DiaryStore | null>(null);
+  const [view, setView] = useState({ state: null, user: null, status: 'Na ovom uređaju', error: '', ownerKey: '', generation: 0, dirty: false, recovery: null, cloudAvailable: false, backups: [] } as ReturnType<DiaryStore['getView']>);
+  useEffect(() => {
+    const store = new DiaryStore();
+    storeRef.current = store;
+    const unsubscribe = store.subscribe(() => setView(store.getView()));
+    const auth = subscribeAuth(() => { void store.boot(); });
+    void (async () => {
+      let magicError = '';
+      try { await consumeMagicLink(); } catch (e) { if (!(e instanceof StaleSessionError)) magicError = (e as Error).message; }
+      await store.boot();
+      if (magicError) store.setError(magicError);
+    })();
+    return () => { unsubscribe(); auth(); store.dispose(); storeRef.current = null; };
+  }, []);
+  // Bind every callback to the render's account and generation. A saved toast or
+  // async closure remains harmless even before another tab's storage event fires.
+  const store = storeRef.current;
+  const action = store?.captureAction();
+  const update = useCallback((fn: (state: State) => State) => action ? store?.update(fn, action) || false : false, [view.ownerKey, view.generation]);
+  const isActionCurrent = useCallback(() => !!action && !!store?.isActionCurrent(action), [view.ownerKey, view.generation]);
+  const setError = useCallback((error: string) => { if (action) store?.setError(error, action); }, [view.ownerKey, view.generation]);
+  const sync = useCallback(async () => { if (action) await store?.sync(action); }, [view.ownerKey, view.generation]);
+  const reloadCloud = useCallback(async () => { if (action) await store?.reloadCloud(action); }, [view.ownerKey, view.generation]);
+  useEffect(() => {
+    if (!view.state || !view.user || !view.dirty) return;
+    const timer = setTimeout(() => { if (action) void store?.sync(action, false).catch(() => {}); }, 900);
+    return () => clearTimeout(timer);
+  }, [view.state, view.dirty, view.ownerKey, view.generation]);
+  useEffect(() => {
+    const online = () => { void sync().catch(() => {}); };
+    const visible = () => { if (document.visibilityState === 'visible') online(); };
+    window.addEventListener('online', online);
+    window.addEventListener('focus', online);
+    document.addEventListener('visibilitychange', visible);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('focus', online); document.removeEventListener('visibilitychange', visible); };
+  }, [sync]);
+  const backupCurrent = useCallback((reason: string) => !!action && !!store?.backupCurrent(reason, action), [view.ownerKey, view.generation]);
+  const getBackups = useCallback(() => action ? store?.getBackups(action) || [] : [], [view.ownerKey, view.generation]);
+  const getRecoveryExport = useCallback((id?: string) => action ? store?.getRecoveryExport(id, action) || null : null, [view.ownerKey, view.generation]);
+  const restoreBackup = useCallback((id: string) => !!action && !!store?.restoreBackup(id, action), [view.ownerKey, view.generation]);
+  const resetCorruptLocal = useCallback(() => !!action && !!store?.resetCorruptLocal(action), [view.ownerKey, view.generation]);
+  return { ...view, update, captureAction: () => update, isActionCurrent, setError, sync, reloadCloud, backupCurrent, getBackups, getRecoveryExport, restoreBackup, resetCorruptLocal };
 }

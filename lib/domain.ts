@@ -6,12 +6,25 @@ export type Nutrients = Record<typeof macros[number],number>;
 const n = z.number().finite().min(0).max(10000);
 export const nutritionSchema = z.object({calories:n,protein:n,carbs:n,fat:n});
 export const quantityUnit=(value:{unit?:'g'|'ml'})=>value.unit??'g';
-export const foodSchema = nutritionSchema.extend({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),name:z.string().min(1).max(500),brand:z.string().max(100),aliases:z.array(z.string().max(500)).max(20),serving:z.number().positive().max(5000),fiber:n,source:z.string().max(200),verified:z.boolean()});
+// Validate new food data without invalidating existing diaries or cached declarations.
+// A volume basis can exceed 100 g of nutrients per 100 ml (for example dense syrups).
+// The energy floor uses only protein and fat: carbohydrates can include polyols
+// such as zero-calorie erythritol. Fibre, alcohol and rounding also vary by label.
+export const foodBasisSchema=nutritionSchema.extend({unit:z.enum(['g','ml']).optional(),fiber:n.optional()}).superRefine((basis,ctx)=>{
+ const volume=quantityUnit(basis)==='ml',massLimit=volume?150:100,totalLimit=volume?155:105,energyLimit=volume?1500:1000;
+ for(const key of ['protein','carbs','fat','fiber'] as const)if((basis[key]??0)>massLimit)ctx.addIssue({code:z.ZodIssueCode.custom,path:[key],message:`Vrijednost na 100 ${quantityUnit(basis)} prelazi dopuštenu granicu.`});
+ if(basis.protein+basis.carbs+basis.fat>totalLimit)ctx.addIssue({code:z.ZodIssueCode.custom,path:['protein'],message:'Zbroj makronutrijenata nije moguć za ovu nutritivnu osnovu.'});
+ if(basis.calories>energyLimit)ctx.addIssue({code:z.ZodIssueCode.custom,path:['calories'],message:'Kalorije na 100 jedinica prelaze dopuštenu granicu.'});
+ const conservativeEnergy=4*basis.protein+9*basis.fat;
+ if(basis.calories<conservativeEnergy*.65-30)ctx.addIssue({code:z.ZodIssueCode.custom,path:['calories'],message:'Kalorije su preniske za navedene makronutrijente. Provjerite deklaraciju.'});
+});
+const sourceUrlsSchema=z.array(z.string().max(2048).url().refine(value=>/^https?:\/\//.test(value),'Izvor mora biti HTTP ili HTTPS poveznica.')).max(10).optional();
+export const foodSchema = nutritionSchema.extend({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),name:z.string().min(1).max(500),brand:z.string().max(100),aliases:z.array(z.string().max(500)).max(20),serving:z.number().positive().max(5000),fiber:n,source:z.string().max(200),sourceUrls:sourceUrlsSchema,verified:z.boolean()});
 export type Food = z.infer<typeof foodSchema>;
 const timestampSchema=z.string().datetime({offset:true}).nullable();
 // Legacy `grams` stores the numeric quantity; `unit` also defines the basis per 100.
 // Missing unit remains grams. Never relabel or convert old diary entries implicitly.
-export const itemSchema = z.object({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),foodId:z.string().max(100),name:z.string().min(1).max(500),grams:z.number().positive().max(5000),meal:z.enum(mealTypes),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),isEstimate:z.boolean(),basis:nutritionSchema,source:z.string().max(200),loggedAt:timestampSchema.optional().default(null)});
+export const itemSchema = z.object({unit:z.enum(['g','ml']).optional(),id:z.string().max(100),foodId:z.string().max(100),name:z.string().min(1).max(500),grams:z.number().positive().max(5000),meal:z.enum(mealTypes),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),isEstimate:z.boolean(),basis:nutritionSchema,source:z.string().max(200),sourceUrls:sourceUrlsSchema,loggedAt:timestampSchema.optional().default(null)});
 export type Item = z.infer<typeof itemSchema>;
 export const targetSchema = nutritionSchema.extend({calories:z.number().min(800).max(8000),protein:z.number().min(0).max(500),carbs:z.number().min(0).max(1200),fat:z.number().min(0).max(500)});
 export const profileSchema=z.object({accentTheme:z.enum(['blue','green','yellow','red','white']).default('blue'),name:z.string().min(1).max(80),sex:z.enum(['male','female']),age:z.number().min(18).max(100),height:z.number().min(100).max(230),weight:z.number().min(35).max(300),goalWeight:z.number().min(35).max(300),activity:z.number().min(1.2).max(1.9),training:z.number().min(0).max(14),goal:z.enum(['mild','moderate','maintain','gain']),targets:targetSchema,waterGoalMl:z.number().int().min(500).max(10000).nullable().optional(),waterTrackingEnabled:z.boolean().default(true),showSilhouettes:z.boolean().default(true)});
@@ -52,7 +65,7 @@ export const searchAlias=(s:string)=>norm(s).slice(0,500);
 export const nutrition=(i:Item):Nutrients=>Object.fromEntries(macros.map(k=>[k,i.basis[k]*i.grams/100])) as Nutrients;
 export const sum=(items:Item[]):Nutrients=>items.reduce((s,i)=>{const a=nutrition(i);for(const k of macros)s[k]+=a[k];return s},{calories:0,protein:0,carbs:0,fat:0});
 export const fmt=(n:number,d=0)=>n.toLocaleString('hr-HR',{maximumFractionDigits:d});
-export function makeItem(food:Food,grams:number,meal:MealType,date:string,isEstimate=true):Item{return {id:uid(),foodId:food.id,name:(food.brand?`${food.name} · ${food.brand}`:food.name).slice(0,500),grams,...(food.unit?{unit:food.unit}:{}),meal,date,isEstimate,basis:{calories:food.calories,protein:food.protein,carbs:food.carbs,fat:food.fat},source:food.source,loggedAt:new Date().toISOString()}}
+export function makeItem(food:Food,grams:number,meal:MealType,date:string,isEstimate=true):Item{return {id:uid(),foodId:food.id,name:(food.brand?`${food.name} · ${food.brand}`:food.name).slice(0,500),grams,...(food.unit?{unit:food.unit}:{}),meal,date,isEstimate,basis:{calories:food.calories,protein:food.protein,carbs:food.carbs,fat:food.fat},source:food.source,...(food.sourceUrls?{sourceUrls:food.sourceUrls}:{}),loggedAt:new Date().toISOString()}}
 export const baseFoods:Food[]=[
 ['banana','Banana',['banan'],120,89,1.1,22.8,.3,2.6],
 ['avocado','Avokado',['avokad'],150,160,2,8.5,14.7,6.7],
@@ -74,20 +87,60 @@ export const baseFoods:Food[]=[
 ['tuna','Tuna u vodi, ocijeđena',['tun'],120,116,25.5,0,.8,0],
 ['apple','Jabuka',['jabuk'],180,52,.3,13.8,.2,2.4],
 ['potato','Kuhani krumpir',['krumpir'],200,87,1.9,20.1,.1,1.8]
-].map(([id,name,aliases,serving,calories,protein,carbs,fat,fiber])=>({id,name,aliases,serving,calories,protein,carbs,fat,fiber,brand:'',source:id==='pepper'?'Generički recept; ovisi o mesu, riži i umaku':'Generička referentna procjena; provjerite deklaraciju',verified:false} as Food));
+].map(([id,name,aliases,serving,calories,protein,carbs,fat,fiber])=>({id,name,aliases,serving,calories,protein,carbs,fat,fiber,...(id==='milk'?{unit:'ml' as const}:{}),brand:'',source:id==='pepper'?'Generički recept; ovisi o mesu, riži i umaku':'Generička referentna procjena; provjerite deklaraciju',verified:false} as Food));
 export const defaultProfile:Profile={accentTheme:'blue',waterTrackingEnabled:true,showSilhouettes:true,name:'Korisnik',sex:'male',age:30,height:175,weight:75,goalWeight:75,activity:1.55,training:3,goal:'maintain',targets:{calories:2200,protein:150,carbs:250,fat:70}};
 export function initialState(demo=true):State{const date=dateKey();return {version:1,profile:defaultProfile,items:demo?[['banana',120,'breakfast'],['avocado',75,'breakfast'],['oats',100,'breakfast'],['whey',30,'breakfast'],['cocoa',5,'breakfast'],['pepper',660,'lunch'],['bread',60,'lunch']].map(([f,g,m])=>makeItem(baseFoods.find(x=>x.id===f)!,Number(g),m as MealType,date, !['oats','bread'].includes(String(f)))):[],foods:[],favorites:[],weights:demo?[{date,kg:84.5}]:[],targets:{},water:{},waterEntries:[],messages:[],onboarded:false,demo}}
 export function suggestWaterGoalMl(weightKg:number){return Math.min(6000,Math.max(1500,Math.round((weightKg*35)/250)*250))}
 export function resolveWaterGoalMl(p:Profile,weightKg=p.weight){return p.waterGoalMl??suggestWaterGoalMl(weightKg)}
-export function suggestTargets(p:Profile):Nutrients{const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='male'?5:-161);const kcal=Math.max(1200,Math.round((bmr*p.activity+({mild:-250,moderate:-400,maintain:0,gain:200}[p.goal]))/50)*50);const protein=Math.round(p.weight*2),fat=Math.round(kcal*.27/9);return {calories:kcal,protein,fat,carbs:Math.round((kcal-protein*4-fat*9)/4)}}
+export function suggestTargets(p:Profile):Nutrients{
+ const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='male'?5:-161);
+ const calories=Math.min(8000,Math.max(1200,Math.round((bmr*p.activity+({mild:-250,moderate:-400,maintain:0,gain:200}[p.goal]))/50)*50));
+ const fat=Math.min(500,Math.round(calories*.27/9));
+ const protein=Math.min(500,Math.round(p.weight*2),Math.floor((calories-fat*9)/4));
+ const carbs=Math.min(1200,Math.max(0,Math.round((calories-protein*4-fat*9)/4)));
+ return targetSchema.parse({calories,protein,fat,carbs});
+}
+// Interpret explicit quantities before splitting the list: e.g. "dvadeset i dva"
+// and "jedan i pol" describe one amount, rather than two independent foods.
+const countWords:Record<string,number>={nula:0,jedan:1,jedna:1,jedno:1,jednu:1,dva:2,dvije:2,dvoje:2,tri:3,cetiri:4,cetvero:4,pet:5,sest:6,sedam:7,osam:8,devet:9,deset:10,jedanaest:11,dvanaest:12,trinaest:13,cetrnaest:14,petnaest:15,sesnaest:16,sedamnaest:17,osamnaest:18,devetnaest:19,dvadeset:20,trideset:30,cetrdeset:40,pedeset:50,sezdeset:60,sedamdeset:70,osamdeset:80,devedeset:90,sto:100,stotinu:100,tisucu:1000};
+const unicodeFractions:Record<string,number>={'½':.5,'¼':.25,'¾':.75,'⅓':1/3,'⅔':2/3};
+const amountUnits:Record<string,{unit:'g'|'ml',factor:number}>={kg:{unit:'g',factor:1000},kilograma:{unit:'g',factor:1000},g:{unit:'g',factor:1},gram:{unit:'g',factor:1},grama:{unit:'g',factor:1},grami:{unit:'g',factor:1},gr:{unit:'g',factor:1},ml:{unit:'ml',factor:1},mililitar:{unit:'ml',factor:1},mililitra:{unit:'ml',factor:1},mililitara:{unit:'ml',factor:1},cl:{unit:'ml',factor:10},dl:{unit:'ml',factor:100},l:{unit:'ml',factor:1000},litra:{unit:'ml',factor:1000},litre:{unit:'ml',factor:1000},litara:{unit:'ml',factor:1000}};
+const amountPattern=new RegExp('(\\d+(?:\\.\\d+)?)\\s*('+Object.keys(amountUnits).join('|')+')\\b');
+function normalizeQuantities(text:string){
+ return norm(text).replace(/(\d),(\d)/g,'$1.$2')
+  .replace(/(\d+)\s*([½¼¾⅓⅔])/g,(_,whole,fraction)=>String(Number(whole)+unicodeFractions[fraction]))
+  .replace(/[½¼¾⅓⅔]/g,fraction=>String(unicodeFractions[fraction]))
+  .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,(original,whole,numerator,denominator)=>Number(denominator)>0?String(Number(whole)+Number(numerator)/Number(denominator)):original)
+  .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,(original,numerator,denominator)=>Number(denominator)>0?String(Number(numerator)/Number(denominator)):original)
+  .replace(new RegExp('\\b('+Object.keys(countWords).join('|')+')\\b','g'),word=>String(countWords[word]))
+  .replace(/\b([2-9]0)\s+(?:i\s+)?([1-9])\b/g,(_,tens,ones)=>String(Number(tens)+Number(ones)))
+  .replace(/\b(\d+)\s+i\s+(?:pol|pola)\b/g,(_,whole)=>String(Number(whole)+.5));
+}
 export function parseLocal(text:string,foods:Food[],meal:MealType,date:string){
- const normalized=norm(text).replace(/(\d),(\d)/g,'$1.$2').replace(/½/g,'pola');
+ const normalized=normalizeQuantities(text);
  const inferred=normalized.includes('doruc')?'breakfast':normalized.includes('rucak')?'lunch':normalized.includes('vecer')?'dinner':meal;
  const chunks=normalized.replace(/\b(po jeo|pojeo sam|dodaj|dorucak|rucak|vecera)\s*:?/g,'').split(/[,;+]|\s+i\s+/).map(s=>s.trim()).filter(Boolean);
  const unknown:string[]=[],items:Item[]=[];
- for(const s of chunks){const food=[...foods].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length),b.name.length)-Math.max(...a.aliases.map(x=>x.length),a.name.length)).find(f=>[norm(f.name),...f.aliases.map(norm)].some(a=>s.includes(a)));
- if(!food){unknown.push(s);continue} const gram=s.match(/(\d+(?:\.\d+)?)\s*(kg|g|grama|gr|ml|mililitara|cl|dl|l)\b/);let grams=food.serving,isEstimate=true;
- if(gram){const volume=['ml','mililitara','cl','dl','l'].includes(gram[2]);if(food.unit&&volume!==(food.unit==='ml')){unknown.push(s);continue}grams=Number(gram[1])*({kg:1000,cl:10,dl:100,l:1000}[gram[2]]??1);isEstimate=/oko|otprilike/.test(s)}else{const count=s.match(/\b(\d+(?:\.\d+)?)\b/);const number=count?Number(count[1]):/\bdvije\b|\bdva\b/.test(s)?2:/\btri\b/.test(s)?3:1;grams*=number;if(/pola|polovic/.test(s))grams/=2;if(/velik/.test(s))grams*=1.25;if(/mal[oa]/.test(s))grams*=.7;if(/zlicic/.test(s))grams=5*number;else if(/zlic/.test(s))grams=15*number;}
- if(grams>0&&grams<=5000)items.push(makeItem(food,grams,inferred as MealType,date,isEstimate));else unknown.push(s);
- }return {items,unknown,mode:'local' as const};
+ for(const s of chunks){
+  const food=[...foods].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length),b.name.length)-Math.max(...a.aliases.map(x=>x.length),a.name.length)).find(f=>[norm(f.name),...f.aliases.map(norm)].some(a=>s.includes(a)));
+  // Do not silently turn malformed or unresolved explicit quantities into one serving.
+  const quantities=s.match(/\d+(?:\.\d+)?(?![\d.])/g)||[];
+  const unresolved=/\/|(?:^|\s)-\s*\d|\d\s*[-–]\s*\d|\b(?:nekoliko|par|vise|manje|mnogo|puno|nekolicina|[a-z]*desetak|[a-z]*stotin[a-z]*|[a-z]*tisuc[a-z]*|[a-z]*cetir[a-z]*)\b/.test(s)||quantities.length>1;
+  if(!food||unresolved){unknown.push(s);continue}
+  const amount=s.match(amountPattern);
+  let grams=food.serving,isEstimate=true;
+  if(amount){
+   const {unit,factor}=amountUnits[amount[2]];
+   if(unit!==quantityUnit(food)){unknown.push(s);continue}
+   grams=Number(amount[1])*factor;isEstimate=/oko|otprilike/.test(s);
+  }else{
+   const count=s.match(/\b(\d+(?:\.\d+)?)\b/),number=(count?Number(count[1]):1)*(/pola|polovic/.test(s)?.5:1);
+   grams*=number;
+   if(/velik/.test(s))grams*=1.25;
+   if(/mal[oa]/.test(s))grams*=.7;
+   if(/zlicic/.test(s))grams=5*number;else if(/zlic/.test(s))grams=15*number;
+  }
+  if(grams>0&&grams<=5000)items.push(makeItem(food,grams,inferred as MealType,date,isEstimate));else unknown.push(s);
+ }
+ return {items,unknown,mode:'local' as const};
 }
