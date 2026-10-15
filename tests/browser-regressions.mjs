@@ -317,7 +317,7 @@ test('the real lazy barcode scanner can retry camera denial and return to input'
     });
     await seed(page, id, original); await waitDiary(page);
     await page.getByRole('button', {name: 'Dodaj hranu', exact: true}).click();
-    await page.getByRole('button', {name: 'Skener', exact: true}).click();
+    await page.getByRole('button', {name: 'Barkod', exact: true}).click();
     const error = page.getByRole('alert').filter({hasText: 'Pristup kameri odbijen u regresijskom testu.'});
     await error.waitFor();
     assert.equal(await page.evaluate(() => window.__kaloraCameraCalls), 1);

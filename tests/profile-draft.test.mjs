@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {defaultProfile} from '../lib/domain.ts';
-import {createProfileDraft,reconcileProfileDraft,editProfileDraft,resolveProfileDraft,profileDraftForSave,markProfileSubmitted} from '../lib/profile-draft.ts';
+import {createProfileDraft,reconcileProfileDraft,editProfileDraft,resolveProfileDraft,profileDraftForSave,markProfileSubmitted,mergePersonalProfile} from '../lib/profile-draft.ts';
 
 const profile=(changes={})=>({...defaultProfile,targets:{...defaultProfile.targets},...changes});
 const edit=(state,changes)=>editProfileDraft(state,p=>({...p,...changes}));
@@ -95,8 +95,37 @@ test('automatic water suggestions follow a clean imported weight without conflic
 test('water tracking changes cannot hide and discard an unsaved water goal',()=>{
  const original=profile({waterGoalMl:2500});
  const state=reconcileProfileDraft(edit(createProfileDraft(original),{waterLiters:'3'}),profile({waterGoalMl:2500,waterTrackingEnabled:false}));
- assert.equal(state.draft.waterTrackingEnabled,true);assert.equal(state.draft.waterLiters,'3');assert.deepEqual(state.conflicts,['waterGoal']);
- const incoming=resolveProfileDraft(state,'incoming');assert.equal(saved(incoming).waterTrackingEnabled,false);assert.equal(saved(incoming).waterGoalMl,2500);
+ assert.equal(state.draft.waterTrackingEnabled,false);assert.equal(state.draft.waterLiters,'3');assert.deepEqual(state.conflicts,[]);
+ assert.equal(saved(state).waterTrackingEnabled,false);assert.equal(saved(state).waterGoalMl,3000);
+});
+
+test('personal Save retains the latest appearance after a layout save while its draft stays dirty',()=>{
+ let state=edit(createProfileDraft(profile()),{name:'My unsaved name',weight:'80'});
+ state=reconcileProfileDraft(state,profile({layout:'compact',accentTheme:'green',showSilhouettes:false,waterTrackingEnabled:false}));
+ assert.equal(state.draft.name,'My unsaved name');assert.equal(state.draft.weight,'80');assert.deepEqual(state.conflicts,[]);
+ const result=saved(state);assert.equal(result.name,'My unsaved name');assert.equal(result.weight,80);
+ assert.equal(result.layout,'compact');assert.equal(result.accentTheme,'green');assert.equal(result.showSilhouettes,false);assert.equal(result.waterTrackingEnabled,false);
+});
+
+test('personal Save cannot revert an appearance save that arrived after its render',()=>{
+ const submission=saved(edit(createProfileDraft(profile()),{name:'Draft name',waterMode:'manual',waterLiters:'3,25'}));
+ const latest=profile({layout:'compact',accentTheme:'red',showSilhouettes:false,waterTrackingEnabled:false});
+ const result=mergePersonalProfile(latest,submission);
+ assert.equal(result.layout,'compact');assert.equal(result.accentTheme,'red');assert.equal(result.showSilhouettes,false);assert.equal(result.waterTrackingEnabled,false);
+ assert.equal(result.name,'Draft name');assert.equal(result.waterGoalMl,3250);
+});
+
+test('an off water setting still permits a deliberately edited personal water goal',()=>{
+ const state=edit(createProfileDraft(profile({waterTrackingEnabled:false,waterGoalMl:2500})),{waterLiters:'3,25'});
+ assert.equal(saved(state).waterGoalMl,3250);assert.equal(saved(state).waterTrackingEnabled,false);
+ const invalid=edit(state,{waterLiters:''});assert.equal(profileDraftForSave(invalid).success,false);
+});
+
+test('onboarding display choices remain editable and inherit the existing layout and color',()=>{
+ let state=createProfileDraft(profile({layout:'compact',accentTheme:'green'}),true);
+ state=edit(state,{...createProfileDraft(profile()).draft,waterTrackingEnabled:false,showSilhouettes:false});
+ const result=saved(state);
+ assert.equal(result.layout,'compact');assert.equal(result.accentTheme,'green');assert.equal(result.waterTrackingEnabled,false);assert.equal(result.showSilhouettes,false);
 });
 
 test('disabled water tracking preserves the latest saved goal and unrelated local edits',()=>{

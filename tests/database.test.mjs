@@ -13,6 +13,13 @@ const s=initialState();
 let r=await db.query('select save_diary($1::jsonb,0) as saved',[JSON.stringify(s)]);assert.equal(r.rows[0].saved.revision,1);
 r=await db.query('select load_diary() as result');assert.equal(r.rows[0].result.state.items.length,7);assert.deepEqual(r.rows[0].result.state.profile,s.profile);
 await assert.rejects(()=>db.query('select save_diary($1::jsonb,0)',[JSON.stringify(s)]),/CONFLICT/);
+// Appearance lives in existing profile JSONB: no schema migration or diary reset.
+const compact={...s,profile:{...s.profile,layout:'compact',accentTheme:'green',showSilhouettes:false}};
+await db.query('select save_diary($1::jsonb,1)',[JSON.stringify(compact)]);
+r=await db.query('select load_diary() as result');
+assert.equal(r.rows[0].result.state.profile.layout,'compact');assert.equal(r.rows[0].result.state.profile.accentTheme,'green');
+assert.equal(r.rows[0].result.state.profile.showSilhouettes,false);assert.deepEqual([...r.rows[0].result.state.items].sort((a,b)=>a.id.localeCompare(b.id)),[...s.items].sort((a,b)=>a.id.localeCompare(b.id)));
+
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[b]);
 r=await db.query('select * from profiles');assert.equal(r.rows.length,0);
 r=await db.query('select * from meal_items');assert.equal(r.rows.length,0);

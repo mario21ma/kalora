@@ -1,4 +1,4 @@
-const CACHE='kalora-shell-v6';
+const CACHE='kalora-shell-v7';
 const PAGES=new Set(['/','/privacy','/terms']);
 const PUBLIC_ASSETS=new Set(['/manifest.json','/icon-192.png','/icon-512.png','/icon-maskable.png','/apple-touch-icon.png']);
 // Keep one handle for this worker. An older worker finishing after activation

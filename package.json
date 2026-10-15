@@ -10,13 +10,13 @@
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/diary-store.test.mjs tests/undo.test.mjs tests/quantity.test.mjs tests/profile-draft.test.mjs tests/ai-rate-limit.test.mjs tests/ai-input.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs tests/scanner.test.mjs",
+    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/diary-store.test.mjs tests/undo.test.mjs tests/quantity.test.mjs tests/profile-draft.test.mjs tests/appearance.test.mjs tests/item-provenance.test.mjs tests/ai-rate-limit.test.mjs tests/ai-input.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs tests/scanner.test.mjs",
     "ios:add": "cap add ios",
     "ios:sync": "cap sync ios",
     "ios:open": "cap open ios",
     "ios:run": "cap run ios",
     "test:database": "node --test tests/database.test.mjs tests/hydration-database.test.mjs tests/ai-rate-limit-database.test.mjs tests/account-deletion-database.test.mjs",
-    "test:browser": "node --test --test-concurrency=1 tests/browser-regressions.mjs tests/pwa-deploy.test.mjs"
+    "test:browser": "node --test --test-concurrency=1 tests/browser-regressions.mjs tests/appearance-browser.mjs tests/pwa-deploy.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -662,3 +662,219 @@ body{background:var(--bg)}
 .barcode-camera video{width:100%;height:100%;object-fit:cover}
 .barcode-frame{position:absolute;left:10%;right:10%;top:28%;height:44%;border:2px solid rgba(255,255,255,.9);border-radius:14px;box-shadow:0 0 0 999px rgba(0,0,0,.25);pointer-events:none}
 .barcode-scan-line{position:absolute;left:4%;right:4%;top:50%;height:2px;transform:translateY(-50%);background:#ff454f;box-shadow:0 0 9px rgba(255,69,79,.7);border-radius:2px}
+
+/* Optional compact layout. The classic dashboard keeps its existing rules. */
+.layout-compact .dashboard-grid{grid-template-columns:minmax(0,1fr) 302px;gap:20px}
+.layout-compact .dashboard-grid>.energy-card{grid-column:1;grid-row:1;padding:16px 20px 20px;color:#eef6ff;border-color:#213448;background:radial-gradient(ellipse at 50% 0,rgba(var(--skin-rgb),.11),transparent 68%),linear-gradient(180deg,#0d1b2b,#08131f)!important}
+.layout-compact .dashboard-grid>.meals-section{grid-column:1;grid-row:2}
+.layout-compact .dashboard-grid>.right-stack{grid-column:2;grid-row:1 / span 2;align-self:start}
+.layout-compact .energy-card::before,.layout-compact .energy-card::after{display:none}
+.layout-compact .energy-card>.section-top{margin-bottom:0;height:36px}
+.layout-compact .energy-card>.section-top h2{display:block;color:#c9d8e9;font-size:.85rem}
+.layout-compact .energy-card>.section-top .icon-button{min-width:44px;min-height:44px;color:#c9d8e9;border:0;background:transparent}
+.layout-compact .energy-content{display:grid!important;grid-template-columns:minmax(0,1fr) 184px minmax(0,1fr)!important;align-items:center!important;gap:12px!important;min-height:216px;margin:0 0 12px!important}
+.layout-compact .energy-content .calorie-ring{grid-column:2;grid-row:1;width:184px!important;height:184px!important;flex-basis:184px!important;justify-self:center}
+.layout-compact .energy-content .energy-detail{display:none!important}
+.layout-compact .body-silhouette{display:flex;flex-direction:column;align-items:center;width:100%;min-width:0;height:206px;pointer-events:none}
+.layout-compact .body-silhouette.food{grid-column:1;grid-row:1;color:#f6cf7e}
+.layout-compact .body-silhouette.water{grid-column:3;grid-row:1;color:#78dcff}
+.layout-compact .body-silhouette>svg{width:100%;height:170px;margin:0;flex:1;min-height:0;overflow:hidden}
+.layout-compact .body-kind-label{display:block;flex-shrink:0;text-align:center;font-size:.75rem;line-height:1.4;color:#c9d8e9;margin-top:3px}
+.layout-compact .body-kind-label b{display:block;color:currentColor;font-size:.8rem;font-variant-numeric:tabular-nums}
+.layout-compact .food .body-kind-label b{color:#f6cf7e}
+.layout-compact .water .body-kind-label b{color:#78dcff}
+.layout-compact .energy-content.without-silhouettes{grid-template-columns:minmax(0,1fr)!important;min-height:188px;margin:0 0 12px!important}
+.layout-compact .energy-content.without-silhouettes .calorie-ring{grid-column:1}
+.layout-compact .energy-content.food-only{grid-template-columns:minmax(0,1fr) 184px minmax(0,1fr)!important}
+.layout-compact .energy-content.food-only .body-silhouette.food{justify-self:end;max-width:120px}
+.layout-compact .macro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:0 0 14px;padding:12px 0;border-top:1px solid #213448;border-bottom:1px solid #213448}
+.layout-compact .macro{display:flex;align-items:center;flex-direction:column;min-width:0;padding:0 7px;text-align:center}
+.layout-compact .macro+.macro{border-left:1px solid #213448}
+.layout-compact .macro-orb{display:none}
+.layout-compact .energy-card .macro-label{display:flex;flex-direction:column;gap:4px;min-width:0;margin:0}
+.layout-compact .energy-card .macro-label>span{display:flex!important;align-items:center;justify-content:center;gap:5px;color:#c6d4e5;font-size:.75rem;line-height:1.35;white-space:normal}
+.layout-compact .energy-card .macro-label>span i{display:none}
+.layout-compact .energy-card .macro-label b{display:block;color:#f2f7fd;font-size:.85rem;line-height:1.45;white-space:normal;font-variant-numeric:tabular-nums}
+.layout-compact .energy-card .macro-label small{font-size:.75rem;color:#aabbcf;white-space:normal}
+.layout-compact .macro-progress{display:none!important}
+.layout-compact .home-water-block{position:relative;z-index:4;display:grid;grid-template-columns:minmax(0,1fr) minmax(56px,.6fr);align-items:center;gap:10px 14px;border:1px solid #1f3b50;background:rgba(14,44,66,.3);border-radius:15px;padding:12px;margin-bottom:12px}
+.layout-compact .home-water-block .water-summary{justify-content:flex-start;margin:0;gap:8px;font-size:.82rem;line-height:1.5;text-align:left;color:#78dcff;text-shadow:none}
+.layout-compact .home-water-block .water-summary b{font-weight:600}
+.layout-compact .home-water-block .water-summary b span{display:block;color:#eef7ff;font-size:.85rem;font-variant-numeric:tabular-nums}
+.layout-compact .compact-water-progress{height:7px;overflow:hidden;background:#132c40;border:1px solid #21445d;border-radius:999px}
+.layout-compact .compact-water-progress>div,.layout-compact .compact-water-progress>span{display:block;height:100%;background:linear-gradient(90deg,#269bff,#57deef);border-radius:inherit}
+.layout-compact .home-water-block .home-water-entry{display:flex;flex-wrap:wrap;gap:8px;grid-column:1 / -1;margin:0}
+.layout-compact .home-water-block .water-amount-control{flex:1 1 176px;min-width:176px;min-height:44px;border-color:#285d7c;border-radius:11px;background:rgba(5,24,40,.45);color:#78dcff}
+.layout-compact .home-water-block .water-amount-control>button{min-width:44px;min-height:44px;font-size:1.4rem}
+.layout-compact .home-water-block .water-amount-value{gap:4px;font-size:.8rem}
+.layout-compact .home-water-block .water-amount-value>svg{display:none}
+.layout-compact .home-water-block .water-amount-value input{width:62px;padding:7px 1px;min-height:40px;color:#c7f1ff;font-variant-numeric:tabular-nums}
+.layout-compact .home-water-block .home-water-confirm{flex:1 0 auto;width:auto;margin:0;min-height:44px;padding:9px 13px;gap:6px;border-color:#287c9d;border-radius:11px;background:#134966;color:#c8f4ff;font-size:.8rem;white-space:normal;box-shadow:none}
+.layout-compact .home-water-block .home-water-confirm>svg{display:none}
+.layout-compact .home-water-block .water-amount-error{order:3;flex-basis:100%;margin:0;color:#ff9ea6}
+.layout-compact .home-add-button{display:flex;min-height:48px;margin:0;border-radius:13px;font-size:.9rem}
+.layout-compact .energy-card .card-foot{display:none}
+.layout-compact .meals-section>.section-top{margin-bottom:10px;flex-wrap:wrap}
+.layout-compact .meals-section>.section-top h2{font-size:1rem}
+.layout-compact .dashboard-grid .meal-list{gap:10px}
+.layout-compact .dashboard-grid .meal-card{padding-inline:14px;border-radius:16px}
+.layout-compact .today-meal-heading,.layout-compact .today-meal-toggle{min-height:64px}
+.layout-compact .today-meal-toggle{padding-block:9px}
+.layout-compact .today-meal-title>b{font-size:.875rem;line-height:1.4}
+.layout-compact .today-meal-title>small{font-size:.75rem;line-height:1.4;margin-top:2px}
+.layout-compact .today-meal-summary{font-size:.8rem}
+.layout-compact .today-meal-summary>small{font-size:.75rem}
+.layout-compact .today-meal-heading>.icon-button{min-width:44px;min-height:44px}
+.layout-compact .food-main{min-height:52px}
+.layout-compact .food-main small{line-height:1.45}
+
+/* Appearance is one independent, explicit save, with small layout previews. */
+.appearance-settings{min-width:0}
+.appearance-settings>h2{margin-bottom:8px}
+.appearance-settings>.muted{font-size:.82rem;line-height:1.6}
+.appearance-section{min-width:0;margin:20px 0 0;padding:0;border:0}
+.appearance-section>legend{float:none;padding:0;margin-bottom:10px;font-size:.875rem;font-weight:650;color:var(--ink)}
+.appearance-layouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.appearance-layout-choice{min-width:0;text-align:left;padding:9px;border:1px solid var(--line);border-radius:14px;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+.appearance-layout-choice[aria-pressed=true]{border-color:var(--skin-color);box-shadow:0 0 0 1px var(--skin-color)}
+.appearance-layout-choice>b{display:block;margin-top:10px;color:var(--ink);font-size:.85rem;line-height:1.4}
+.appearance-layout-choice>small{display:block;margin-top:3px;color:var(--muted);font-size:.75rem;line-height:1.5}
+.appearance-layout-preview{display:block;height:124px;overflow:hidden;border:1px solid #24354b;border-radius:9px;background:#0b1725;padding:9px}
+.appearance-layout-preview .preview-summary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:65px;border-radius:6px;background:radial-gradient(ellipse at 75% 0,#b76a63 0,transparent 75%),linear-gradient(180deg,#344a89,#10243b)}
+.appearance-layout-preview .preview-ring{display:block;flex:0 0 43px;width:43px;height:43px;border:4px solid #213b51;border-right-color:var(--skin-color);border-top-color:var(--skin-color);border-bottom-color:var(--skin-color);border-radius:50%}
+.appearance-layout-preview .preview-person{display:block;position:relative;width:13px;height:37px;margin-top:9px;flex:0 0 13px;border:1px solid #8abbda;border-radius:7px 7px 4px 4px;background:linear-gradient(0deg,#2b88a7 50%,#193449 50%)}
+.appearance-layout-preview .preview-person::before{content:"";position:absolute;left:3px;top:-9px;width:7px;height:8px;border:1px solid #8abbda;border-radius:50%;background:#193449}
+.appearance-layout-preview .preview-macros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+.appearance-layout-preview .preview-macros i{display:block;height:9px;width:9px;justify-self:center;border:1px solid #38d7ad;border-radius:50%}
+.appearance-layout-preview .preview-macros i:nth-child(2){border-color:#49b8ff}
+.appearance-layout-preview .preview-macros i:nth-child(3){border-color:#ff9d49}
+.appearance-layout-preview .preview-water{display:block;height:5px;max-width:65%;margin:5px auto;border-radius:5px;background:linear-gradient(90deg,#42bfff 55%,#284052 55%)}
+.appearance-layout-preview .preview-lines{display:grid;gap:5px;margin-top:7px}
+.appearance-layout-preview .preview-lines i{display:block;height:5px;background:#273a51;border-radius:4px}
+.appearance-layout-preview.classic .preview-lines i:last-child{display:none}
+.appearance-layout-preview.compact .preview-summary{min-height:48px;background:#102338}
+.appearance-layout-preview.compact .preview-ring{width:35px;height:35px;flex-basis:35px;border-width:3px}
+.appearance-layout-preview.compact .preview-person{height:28px;width:10px;flex-basis:10px}
+.appearance-layout-preview.compact .preview-person::before{left:2px;width:6px;height:7px;top:-8px}
+.appearance-layout-preview.compact .preview-macros{margin:6px 0;gap:5px}
+.appearance-layout-preview.compact .preview-macros i{width:100%;height:4px;border:0;border-radius:3px;background:#34506a}
+.appearance-layout-preview.compact .preview-water{max-width:100%;height:9px;margin:6px 0}
+.appearance-layout-preview.compact .preview-lines i{height:10px}
+.appearance-colors{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.appearance-color-choice{--appearance-color:#48c6ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:70px;min-width:0;padding:8px 3px;border:1px solid var(--line);border-radius:12px;background:var(--bg);font-size:.75rem;line-height:1.4;text-align:center;overflow-wrap:anywhere}
+.appearance-color-choice[data-color=green]{--appearance-color:#35df9c}
+.appearance-color-choice[data-color=yellow]{--appearance-color:#ffdb63}
+.appearance-color-choice[data-color=red]{--appearance-color:#ff8388}
+.appearance-color-choice[data-color=white]{--appearance-color:#edf3ff}
+.appearance-color-dot{display:block;width:22px;height:22px;flex-shrink:0;border-radius:50%;border:1px solid #64748b;background:var(--appearance-color)}
+.appearance-color-choice[aria-pressed=true]{border-color:var(--appearance-color);box-shadow:0 0 0 1px var(--appearance-color);font-weight:700}
+.appearance-color-choice[aria-pressed=true] .appearance-color-dot{outline:2px solid var(--appearance-color);outline-offset:3px}
+.appearance-settings .profile-toggle-row{gap:12px}
+.appearance-settings .profile-toggle-row>div{min-width:0}
+.appearance-status{display:block;min-height:1.5em;color:var(--muted);font-size:.75rem;line-height:1.5;margin:14px 0 10px}
+.appearance-settings>.primary{width:100%;min-height:46px}
+.appearance-settings button[type=submit]{width:100%;min-height:46px}
+.appearance-settings .button-row{flex-wrap:wrap;justify-content:flex-start;gap:8px;margin-top:10px}
+.appearance-settings .button-row>button{font-size:.8rem}
+
+/* One food-entry dialog, using the existing preview and nutrition actions. */
+.food-entry{min-width:0;display:grid;gap:14px}
+.food-entry .add-mode-tabs{margin:0;gap:7px}
+.food-entry .add-mode-tabs button{min-width:0;min-height:56px;padding:8px 4px;border-radius:12px;gap:5px;font-size:.8rem;line-height:1.35;color:var(--muted)}
+.food-entry .add-mode-tabs button.active{background:var(--skin-gradient);color:var(--skin-home-ink);border-color:transparent;box-shadow:0 6px 18px rgba(var(--skin-rgb),.13)}
+.food-entry .entry-mode-panel{min-width:0}
+.food-entry .entry-description{font-size:.8rem;color:var(--muted);line-height:1.6;margin-bottom:10px}
+.food-entry .entry-ai-note{font-size:.75rem;color:var(--muted);line-height:1.6;margin-top:9px}
+.food-entry .field{margin:0 0 12px}
+.food-entry .entry-section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.food-entry .entry-section-heading h3{font-size:.875rem}
+.food-entry .entry-section-heading>span{font-size:.75rem;color:var(--muted)}
+.food-entry .entry-common-foods{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.food-entry .quick-foods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.food-entry .quick-foods button{min-width:0;min-height:44px;padding:9px 11px;border-radius:11px;line-height:1.45;text-align:left;flex-wrap:wrap}
+.food-entry .quick-foods button span{font-size:.75rem}
+.food-entry .entry-food-pick{display:inline-flex;align-items:center;gap:7px;min-height:44px;text-align:left}
+.food-entry .quick-foods .entry-food-pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 7px}
+.food-entry .entry-food-pick>span:first-child{grid-column:1;grid-row:1;color:var(--ink);font-size:.8rem;line-height:1.45;overflow-wrap:anywhere}
+.food-entry .entry-food-pick>span:first-child small{display:block;color:var(--muted);font-size:.75rem}
+.food-entry .entry-food-pick>span:nth-child(2){grid-column:1;grid-row:2;line-height:1.4}
+.food-entry .entry-food-pick>svg{grid-column:2;grid-row:1 / span 2;color:var(--skin-color)}
+.food-entry .saved-favorites{margin:0 0 18px}
+.food-entry .saved-favorites>h3{display:flex;align-items:center;gap:7px;margin:0 0 10px;font-size:.875rem}
+.food-entry .saved-favorite-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.food-entry .saved-favorite{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:9px;min-height:68px;padding:12px;border:1px solid var(--line);border-radius:13px;text-align:left;background:var(--bg)}
+.food-entry .saved-favorite>span{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}
+.food-entry .saved-favorite b,.food-entry .saved-favorite>span{font-size:.82rem;line-height:1.45;overflow-wrap:anywhere}
+.food-entry .saved-favorite small{font-size:.75rem;line-height:1.5;color:var(--muted)}
+.food-entry .entry-empty{padding:16px;border:1px dashed var(--line);border-radius:13px;font-size:.8rem;line-height:1.6;color:var(--muted);background:var(--bg)}
+.food-entry .entry-empty h3{color:var(--ink);margin-bottom:5px;font-size:.9rem}
+.food-entry .preview-section{margin-top:0}
+.food-entry .preview-section>h3{line-height:1.45}
+.food-entry .preview-row{flex-wrap:wrap;gap:10px}
+.food-entry .preview-row>div:first-child{min-width:120px}
+.food-entry .preview-row label{min-height:44px;flex-shrink:0;font-size:.8rem}
+.food-entry .preview-row input{min-height:44px;width:78px}
+.food-entry .preview-row>.icon-button{min-width:44px;min-height:44px}
+.app-modal .entry-provenance{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;line-height:1.5}
+.app-modal .entry-provenance>span{display:inline-flex;align-items:center;gap:4px;max-width:100%;font-size:.75rem;line-height:1.5;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--surface) 65%,transparent);color:var(--muted);overflow-wrap:anywhere}
+.app-modal .entry-provenance .provenance-quantity[data-kind=estimate]{color:var(--ink);background:rgba(156,102,24,.1);border-color:rgba(205,154,76,.35)}
+.app-modal .entry-provenance .provenance-data[data-kind=open-food-facts],.app-modal .entry-provenance .provenance-data[data-kind=manual]{color:var(--ink);background:rgba(32,142,110,.09);border-color:rgba(55,169,139,.35)}
+.app-modal .provenance-links{display:flex;flex-wrap:wrap;gap:4px 10px;width:100%;margin-top:3px}
+.app-modal .provenance-links a{display:inline-flex;align-items:center;min-height:32px;font-size:.75rem;line-height:1.5;color:var(--skin-color);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+
+@media(max-width:1000px) and (min-width:761px){
+ .layout-compact .dashboard-grid{grid-template-columns:minmax(0,1fr)}
+ .layout-compact .dashboard-grid>.right-stack{grid-column:1;grid-row:3}
+}
+@media(max-width:760px){
+ .layout-compact .dashboard-grid{gap:14px}
+ .layout-compact .dashboard-grid>.energy-card{padding:10px 12px 14px;border-radius:20px}
+ .layout-compact .energy-card>.section-top{height:32px;margin-bottom:0}
+ .layout-compact .energy-card>.section-top h2{font-size:.8rem}
+ .layout-compact .energy-content{grid-template-columns:minmax(0,1fr) 160px minmax(0,1fr)!important;min-height:198px;gap:3px!important;margin:0 0 9px!important}
+ .layout-compact .energy-content .calorie-ring{width:160px!important;height:160px!important;flex-basis:160px!important}
+ .layout-compact .body-silhouette{height:192px}
+ .layout-compact .body-silhouette>svg{height:154px}
+ .layout-compact .energy-content.without-silhouettes{min-height:166px;margin:0 0 9px!important}
+ .layout-compact .energy-content.food-only{grid-template-columns:minmax(0,1fr) 160px minmax(0,1fr)!important}
+ .layout-compact .macro-grid{padding:11px 0;margin-bottom:12px}
+ .layout-compact .macro{padding-inline:5px}
+ .layout-compact .energy-card .macro-label b{font-size:.8rem}
+ .layout-compact .home-water-block{gap:10px;padding:10px;border-radius:13px}
+ .layout-compact .home-water-block .home-water-confirm{padding-inline:10px}
+ .layout-compact .meals-section{margin-top:0}
+ .layout-compact .dashboard-grid>.right-stack{gap:14px!important}
+ .layout-compact .bottom-nav [role=tab]{padding-inline:5px;min-width:0;flex-shrink:1!important}
+ .appearance-section{margin-top:18px}
+ .appearance-layout-preview{height:122px;padding:8px}
+ .appearance-layout-preview .preview-summary{gap:6px}
+ .food-entry{gap:13px}
+ .food-entry .preview-row{padding:11px}
+ .food-entry .entry-provenance{gap:5px}
+ .food-entry .saved-favorite-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:430px){
+ .appearance-colors{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .appearance-color-choice{min-height:66px;flex-direction:row;gap:7px;flex-wrap:wrap}
+}
+@media(max-width:359px){
+ .layout-compact .energy-content{grid-template-columns:minmax(0,1fr) 144px minmax(0,1fr)!important;min-height:188px}
+ .layout-compact .energy-content .calorie-ring{width:144px!important;height:144px!important;flex-basis:144px!important}
+ .layout-compact .body-silhouette{height:178px}
+ .layout-compact .body-silhouette>svg{height:140px}
+ .layout-compact .energy-content.food-only{grid-template-columns:minmax(0,1fr) 144px minmax(0,1fr)!important}
+ .layout-compact .home-water-block .home-water-entry{flex-direction:column}
+ .layout-compact .home-water-block .water-amount-control{flex:0 1 auto}
+ .layout-compact .home-water-block .home-water-confirm{width:100%}
+ .layout-compact .energy-card .macro-label>span{font-size:.75rem}
+ .layout-compact .energy-card .macro-label b{font-size:.78rem}
+ .appearance-layouts{gap:8px}
+ .appearance-layout-choice{padding:7px}
+ .appearance-layout-preview{padding:7px 4px}
+ .appearance-layout-preview .preview-summary{gap:5px}
+ .appearance-layout-preview .preview-person{width:10px;flex-basis:10px}
+ .food-entry .add-mode-tabs button{font-size:.75rem}
+}
+@media(prefers-reduced-motion:reduce){
+ .appearance-layout-choice{transition:none}
+}

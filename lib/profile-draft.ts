@@ -1,5 +1,6 @@
 import {profileSchema,suggestWaterGoalMl} from './domain.ts';
 import type {Profile} from './domain.ts';
+import {appearanceFromProfile} from './appearance.ts';
 
 export type DraftProfile={
  name:string;
@@ -18,9 +19,9 @@ export type DraftProfile={
  targets:{calories:string;protein:string;carbs:string;fat:string};
 };
 
-const fields=['name','sex','age','height','weight','goalWeight','activity','training','goal','showSilhouettes','targets.calories','targets.protein','targets.carbs','targets.fat','waterGoal'] as const;
+const fields=['name','sex','age','height','weight','goalWeight','activity','training','goal','showSilhouettes','waterTrackingEnabled','targets.calories','targets.protein','targets.carbs','targets.fat','waterGoal'] as const;
 export type ProfileDraftField=typeof fields[number];
-export const profileDraftLabels:Record<ProfileDraftField,string>={name:'Ime',sex:'Spol',age:'Dob',height:'Visina',weight:'Trenutna težina',goalWeight:'Ciljana težina',activity:'Aktivnost',training:'Treninzi',goal:'Cilj',showSilhouettes:'Prikaz silueta','targets.calories':'Kalorije','targets.protein':'Proteini','targets.carbs':'Ugljikohidrati','targets.fat':'Masti',waterGoal:'Praćenje i cilj vode'};
+export const profileDraftLabels:Record<ProfileDraftField,string>={name:'Ime',sex:'Spol',age:'Dob',height:'Visina',weight:'Trenutna težina',goalWeight:'Ciljana težina',activity:'Aktivnost',training:'Treninzi',goal:'Cilj',showSilhouettes:'Prikaz silueta',waterTrackingEnabled:'Praćenje vode','targets.calories':'Kalorije','targets.protein':'Proteini','targets.carbs':'Ugljikohidrati','targets.fat':'Masti',waterGoal:'Cilj vode'};
 
 export type ProfileDraftState={
  source:Profile;
@@ -52,17 +53,17 @@ export function createProfileDraft(value:Profile,onboarding=false):ProfileDraftS
 }
 
 function fieldValue(p:DraftProfile,field:ProfileDraftField,source=false):string|boolean{
- if(field==='waterGoal')return JSON.stringify([p.waterTrackingEnabled,p.waterMode,source&&p.waterMode==='auto'?null:p.waterLiters]);
+ if(field==='waterGoal')return JSON.stringify([p.waterMode,source&&p.waterMode==='auto'?null:p.waterLiters]);
  if(field.startsWith('targets.'))return p.targets[field.slice(8) as keyof DraftProfile['targets']];
- return p[field as keyof Omit<DraftProfile,'targets'|'waterTrackingEnabled'|'waterMode'|'waterLiters'>];
+ return p[field as keyof Omit<DraftProfile,'targets'|'waterMode'|'waterLiters'>];
 }
 
 function copyField(target:DraftProfile,source:DraftProfile,field:ProfileDraftField){
  if(field==='waterGoal'){
-  target.waterTrackingEnabled=source.waterTrackingEnabled;target.waterMode=source.waterMode;target.waterLiters=source.waterLiters;
+  target.waterMode=source.waterMode;target.waterLiters=source.waterLiters;
  }else if(field.startsWith('targets.')){
   const key=field.slice(8) as keyof DraftProfile['targets'];target.targets[key]=source.targets[key];
- }else if(field==='showSilhouettes')target.showSilhouettes=source.showSilhouettes;
+ }else if(field==='showSilhouettes'||field==='waterTrackingEnabled')target[field]=source[field];
  else{
   const key=field as keyof Omit<DraftProfile,'targets'|'waterTrackingEnabled'|'waterMode'|'waterLiters'|'showSilhouettes'>;
   Object.assign(target,{[key]:source[key]});
@@ -79,7 +80,7 @@ function numericText(text:string,comma=false){
 // Treat completed numeric formatting as convergence, but retain incomplete input verbatim.
 function converges(draft:DraftProfile,incoming:DraftProfile,field:ProfileDraftField){
  if(fieldValue(draft,field)===fieldValue(incoming,field))return true;
- if(field==='waterGoal')return draft.waterTrackingEnabled===incoming.waterTrackingEnabled&&draft.waterMode===incoming.waterMode&&draft.waterMode==='manual'&&numericText(draft.waterLiters,true)!==null&&numericText(draft.waterLiters,true)===numericText(incoming.waterLiters,true);
+ if(field==='waterGoal')return draft.waterMode===incoming.waterMode&&draft.waterMode==='manual'&&numericText(draft.waterLiters,true)!==null&&numericText(draft.waterLiters,true)===numericText(incoming.waterLiters,true);
  if(['age','height','weight','goalWeight','activity','training'].includes(field)||field.startsWith('targets.')){
   const local=numericText(String(fieldValue(draft,field)));
   return local!==null&&local===numericText(String(fieldValue(incoming,field)));
@@ -88,7 +89,7 @@ function converges(draft:DraftProfile,incoming:DraftProfile,field:ProfileDraftFi
 }
 
 function profileKey(p:Profile){
- return JSON.stringify([toProfileDraft(p),p.accentTheme,p.waterGoalMl]);
+ return JSON.stringify([toProfileDraft(p),p.layout,p.accentTheme,p.waterGoalMl]);
 }
 
 function savedFieldsMatch(a:Profile,b:Profile){
@@ -151,7 +152,7 @@ export function parseProfileDraft(p:DraftProfile,savedWaterGoalMl?:number|null){
  return profileSchema.safeParse({
   name:p.name.trim(),sex:p.sex,age:Number(p.age),height:Number(p.height),weight:Number(p.weight),goalWeight:Number(p.goalWeight),activity:Number(p.activity),training:Number(p.training),goal:p.goal,
   waterTrackingEnabled:p.waterTrackingEnabled,showSilhouettes:p.showSilhouettes,
-  waterGoalMl:!p.waterTrackingEnabled?savedWaterGoalMl:p.waterMode==='auto'?null:Math.round(Number(p.waterLiters.trim().replace(',','.'))*1000),
+  waterGoalMl:p.waterMode==='auto'?null:Math.round(Number(p.waterLiters.trim().replace(',','.'))*1000),
   targets:{calories:Number(p.targets.calories),protein:Number(p.targets.protein),carbs:Number(p.targets.carbs),fat:Number(p.targets.fat)}
  });
 }
@@ -159,7 +160,15 @@ export function parseProfileDraft(p:DraftProfile,savedWaterGoalMl?:number|null){
 export function profileDraftForSave(state:ProfileDraftState):{success:true;profile:Profile}|{success:false;reason:'conflict'|'invalid'}{
  if(state.conflicts.length)return {success:false,reason:'conflict'};
  const parsed=parseProfileDraft(state.draft,state.source.waterGoalMl);
- return parsed.success?{success:true,profile:{...parsed.data,accentTheme:state.source.accentTheme}}:{success:false,reason:'invalid'};
+ if(!parsed.success)return {success:false,reason:'invalid'};
+ const profile={...parsed.data,layout:state.source.layout,accentTheme:state.source.accentTheme};
+ return {success:true,profile:state.onboarding?profile:mergePersonalProfile(state.source,profile)};
+}
+
+// A personal-profile Save does not own appearance settings. Keep the most recent
+// values even when an appearance save arrived between rendering and submission.
+export function mergePersonalProfile(current:Profile,submitted:Profile):Profile{
+ return {...submitted,...appearanceFromProfile(current)};
 }
 
 export function markProfileSubmitted(state:ProfileDraftState,profile:Profile):ProfileDraftState{
