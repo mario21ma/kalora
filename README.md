@@ -1,19 +1,25 @@
-# Kalora — paket za preuzimanje
+# Kalora — paketi za preuzimanje
 
-Ova grana sadrži samo isporuku; nije aplikacijska ni produkcijska grana.
+## Najnovije: novi izgled i unos hrane
 
-[Preuzmi ZIP](Kalora-zadnji-popravci-2026-10-15.zip) (na GitHub stranici datoteke odaberi **Download raw file**).
+**[Preuzmi novi programski ZIP](Kalora-novi-izgled-2026-10-15.zip)** — 10 datoteka za zamjenu i 8 novih. U ZIP-u prvo pročitaj PRVO_PROCITAJ.md. SQL ne treba ponovno pokretati.
 
-U ZIP-u prvo otvori `PRVO_PROCITAJ.md`. Zamijeni 18 postojećih i dodaj 3 nove datoteke iz mape `projekt/`, uz očuvanje putanja. SQL ne treba ponovno pokretati. Nema automatske aplikacijske objave.
+Novi raspored uključuješ kroz **Profil → Izgled aplikacije → Kompaktni → Spremi izgled**. Klasični ostaje zadani; nijedan korisnički unos nije potrebno brisati.
 
-Izvor: `a83a04ebe87bcb963f5575348d84b1a803ff37b4`, baza: `7aead637ea4ed8d910537438ec90ef734eaa1e37`.
+- [Kratke upute](PREUZIMANJE_NOVI_IZGLED.md)
+- [Stvarni novi ekran lokalnog produkcijskog builda](Kalora-kompaktni-stvarni-prikaz.png)
+- [Opis izmjena, provjera i primjene](IZGLED_I_UNOS_2026-10-15.md)
 
-Provjereno: 198 osnovnih, 7 SQL i 36 pregledničkih testova, TypeScript i produkcijski build. Produkcija nije testirana ni mijenjana.
+Prošlo: 217 osnovnih, 7 SQL, 44 u punom pregledničkom prolazu + 1 dodatna regresija malog ekrana, TypeScript i produkcijski build. Stvarni mobilni uređaj i stvarne cloud usluge još trebaju ručnu provjeru. Aplikacija nije automatski objavljena.
 
-## Novi vizualni prijedlozi — bez izmjene aplikacije
+## Raniji paket beta popravaka
 
-- [Klasični i Kompaktni](Kalora-klasicni-i-kompaktni.png)
-- [Dodavanje hrane i postavke izgleda](Kalora-unos-i-postavke.png)
-- [Obrazloženje i redoslijed unapređenja](PRIJEDLOG_UNAPRJEDENJA.md)
+[ZIP prethodnih potvrđenih beta popravaka](Kalora-zadnji-popravci-2026-10-15.zip).
 
-Ovo su koncepti. ZIP s popravcima i aplikacijski kod nisu mijenjani.
+## Vizualni koncepti prije implementacije
+
+- [Klasični i Kompaktni — koncept](Kalora-klasicni-i-kompaktni.png)
+- [Unos i postavke — koncept](Kalora-unos-i-postavke.png)
+- [Obrazloženje prijedloga](PRIJEDLOG_UNAPRJEDENJA.md)
+
+Ova grana služi preuzimanju paketa i dokumenata. Nije aplikacijska ni produkcijska grana. Prijenos u povezani main može pokrenuti Vercel; prvo provjeri izmjene na odvojenoj grani, a za hosted Preview s promjenama podataka koristi odvojenu testnu bazu.
