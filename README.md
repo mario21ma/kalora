@@ -1,6 +1,12 @@
 # Kalora — paketi za preuzimanje
 
-## Najnovije: novi izgled i unos hrane
+## Najnovija mala dorada: boje i trakice makronutrijenata
+
+**[Preuzmi nadogradnju makroa](Kalora-kompaktni-makroi-2026-10-15.zip)** — zamjenjuje se samo `app/globals.css`, nakon prethodnog paketa novog izgleda.
+
+Proteini zeleni, ugljikohidrati plavi, masti narančaste, uz trakice prema dnevnom cilju. [Stvarni prikaz](Kalora-kompaktni-makroi.png) · [Upute](MAKROI_UPUTE.md). SQL nije potreban; aplikacija nije automatski objavljena.
+
+## Prethodni cjeloviti paket: novi izgled i unos hrane
 
 **[Preuzmi novi programski ZIP](Kalora-novi-izgled-2026-10-15.zip)** — 10 datoteka za zamjenu i 8 novih. U ZIP-u prvo pročitaj PRVO_PROCITAJ.md. SQL ne treba ponovno pokretati.
 
