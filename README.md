@@ -1,6 +1,19 @@
 # Kalora — paketi za preuzimanje
 
-## Najnovija mala dorada: boje i trakice makronutrijenata
+## Najnovije: dorade za računalo
+
+**[Preuzmi desktop ZIP](Kalora-desktop-dorade-2026-10-15.zip)** — 5 datoteka za zamjenu i 2 nove, za verziju main UI 6.5. U ZIP-u prvo pročitaj PRVO_PROCITAJ.md. Nema nove SQL migracije.
+
+Širi dnevnik, voda i tjedni pregled desno, jasniji redovi hrane te unos i provjera obroka u dva stupca. Mobilni prikaz i izbor Klasični/Kompaktni ostaju. Desktop raspored uključuje se automatski prema širini prozora. Nema dodatnih AI poziva.
+
+- [Kratke upute](DESKTOP_UPUTE.md)
+- [Stvarni desktop: Kompaktni](Kalora-desktop-kompaktni.png) · [Klasični](Kalora-desktop-klasicni.png)
+- [Stvarni unos hrane](Kalora-desktop-unos.png) · [Mobilni Kompaktni](Kalora-mobitel-kompaktni.png)
+- [Opis izmjena i lokalnih provjera](DESKTOP_DORADE_2026-10-15.md)
+
+Prošlo: 217 osnovnih, 7 lokalnih SQL i 53 preglednička testa, TypeScript i produkcijski build. Fizički telefon i produkcijske usluge još trebaju ručnu provjeru. Aplikacija nije automatski objavljena.
+
+## Prethodna mala dorada: boje i trakice makronutrijenata
 
 **[Preuzmi nadogradnju makroa](Kalora-kompaktni-makroi-2026-10-15.zip)** — zamjenjuje se samo `app/globals.css`, nakon prethodnog paketa novog izgleda.
 
