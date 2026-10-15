@@ -65,6 +65,48 @@ test('diary recovery, revision conflicts and clean pulls',async t=>{
   assert.equal(localStorage.getItem('kalora-v1-A'),'[broken');assert.equal(store.getView().state,null);assert.equal(store.resetCorruptLocal(),true);
   assert.ok(store.getView().state);assert.equal(store.getRecoveryExport(store.getBackups().find(b=>!b.readable).id).content,'[broken');
  });
+ for (const failure of ['offline','503']) await t.test(`corrupt diary can recheck cloud after initial ${failure} without reboot or replacing raw`,async()=>{
+  reset();saveSession(valid('A'));const raw='{original recovery bytes';localStorage.setItem('kalora-v1-A',raw);
+  navigator.onLine=failure!=='offline';let healthy=false,calls=0;
+  globalThis.fetch=async()=>{calls++;return healthy?response(200,{state:record('recovered cloud').state,revision:7}):response(503,{message:'Unavailable'})};
+  const store=new DiaryStore();await store.boot();const generation=store.getView().generation;
+  assert.equal(calls,failure==='offline'?0:1);assert.equal(store.getView().cloudAvailable,false);
+  healthy=true;navigator.onLine=true;await store.sync();
+  assert.equal(calls,failure==='offline'?1:2);assert.equal(store.getView().generation,generation);
+  assert.equal(store.getView().cloudAvailable,true);assert.equal(store.getView().state,null);assert.equal(store.getView().recovery,'corrupt');
+  assert.equal(localStorage.getItem('kalora-v1-A'),raw);assert.match(store.getView().error,/Izvorni zapis je sačuvan/);
+  assert.doesNotMatch(store.getView().error,/nije dostupan/);
+  await store.reloadCloud();assert.equal(store.getView().state.profile.name,'recovered cloud');
+  assert.ok(store.getBackups().some(b=>store.getRecoveryExport(b.id).content===raw));
+ });
+ await t.test('recovery checks deduplicate and reject stale account replies',async()=>{
+  reset();navigator.onLine=false;saveSession(valid('A'));localStorage.setItem('kalora-v1-A','{unreadable A');
+  const store=new DiaryStore();await store.boot();navigator.onLine=true;
+  const delayed=deferred(),started=deferred();let calls=0;globalThis.fetch=async()=>{calls++;started.resolve();return delayed.promise};
+  const first=store.sync(),second=store.sync();await started.promise;assert.equal(calls,1);
+  saveSession(valid('B'));storeRecord('B',record('B'));globalThis.fetch=async()=>response(200,{state:record('B').state,revision:2});await store.boot();
+  delayed.resolve(response(200,{state:record('old A').state,revision:10}));await Promise.all([first,second]);
+  assert.equal(store.getView().state.profile.name,'B');assert.equal(store.getView().recovery,null);
+  assert.equal(localStorage.getItem('kalora-v1-A'),'{unreadable A');assert.equal(JSON.parse(localStorage.getItem('kalora-v1-B')).state.profile.name,'B');
+ });
+ await t.test('invalid recovery response preserves raw and still permits explicit retry',async()=>{
+  reset();navigator.onLine=false;saveSession(valid('A'));localStorage.setItem('kalora-v1-A','{unreadable');
+  const store=new DiaryStore();await store.boot();navigator.onLine=true;
+  globalThis.fetch=async()=>response(200,{state:record('bad revision').state,revision:-1});await assert.rejects(store.sync(),/reviziju/);
+  assert.equal(store.getView().cloudAvailable,false);assert.equal(store.getView().state,null);assert.equal(localStorage.getItem('kalora-v1-A'),'{unreadable');
+  globalThis.fetch=async()=>response(200,{state:record('healthy').state,revision:3});await store.reloadCloud();assert.equal(store.getView().state.profile.name,'healthy');
+ });
+ for (const outcome of ['older response','503']) await t.test(`late boot ${outcome} cannot replace explicit recovery or subsequent edits`,async()=>{
+  reset();saveSession(valid('A'));localStorage.setItem('kalora-v1-A','{preserve original');
+  const delayed=deferred(),started=deferred();let calls=0;
+  globalThis.fetch=async()=>{if(++calls===1){started.resolve();return delayed.promise}return response(200,{state:record('chosen cloud').state,revision:8})};
+  const store=new DiaryStore();const boot=store.boot();await started.promise;
+  await store.reloadCloud();store.update(s=>withWaterEntries(s,[makeWaterEntry(500,'2026-10-15')]));
+  delayed.resolve(outcome==='503'?response(503,{message:'Unavailable'}):response(200,{state:record('old cloud').state,revision:7}));await boot;
+  assert.equal(store.getView().state.profile.name,'chosen cloud');assert.equal(store.getView().state.water['2026-10-15'],500);
+  assert.equal(store.getView().error,'');assert.equal(JSON.parse(localStorage.getItem('kalora-v1-A')).revision,8);
+  assert.ok(store.getBackups().some(b=>store.getRecoveryExport(b.id).content==='{preserve original'));
+ });
  await t.test('boot conflict automatically preserves exact local before cloud replacement',async()=>{
   reset();saveSession(valid('A'));const local=record('local A',true,2);local.state=withWaterEntries(local.state,[makeWaterEntry(500,'2026-10-14')]);storeRecord('A',local);const raw=localStorage.getItem('kalora-v1-A');
   globalThis.fetch=async()=>response(200,{state:record('remote A').state,revision:3});const store=new DiaryStore();await store.boot();

@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
 import {createBarcodeScanner} from '../lib/barcode-scanner.ts';
 
+const require=createRequire(import.meta.url);
+const {BrowserCodeReader,BrowserMultiFormatReader}=require('@zxing/browser');
+// Resolve the same installed peer dependency that the real browser reader uses.
+const {NotFoundException,ChecksumException,FormatException}=createRequire(require.resolve('@zxing/browser'))('@zxing/library');
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}};
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 function fakeDecoder({pending}={}){
@@ -10,7 +15,7 @@ function fakeDecoder({pending}={}){
   async decodeFromVideoDevice(device,video,callback){
    assert.equal(device,undefined);assert(video);
    const controls={stops:0,stop(){this.stops++}};
-   const attempt={controls,read(code){callback({getText:()=>code},undefined,controls)},miss(){callback(undefined,new Error('Not found'),controls)}};
+   const attempt={controls,read(code){callback({getText:()=>code},undefined,controls)},fail(error){callback(undefined,error,controls)},miss(){callback(undefined,new NotFoundException(),controls)}};
    attempts.push(attempt);
    if(pending)await pending.promise;
    return controls;
@@ -18,6 +23,65 @@ function fakeDecoder({pending}={}){
  }
  return {attempts,load:async()=>({BrowserMultiFormatReader})};
 }
+
+function realDecoder(decode){
+ const originals={canvas:BrowserCodeReader.createCaptureCanvas,draw:BrowserCodeReader.drawImageOnCanvas,attach:BrowserCodeReader.attachStreamToVideo,clean:BrowserCodeReader.cleanVideoSource,media:BrowserMultiFormatReader.prototype.getUserMedia,decode:BrowserMultiFormatReader.prototype.decodeFromCanvas};
+ const streams=[];
+ BrowserCodeReader.createCaptureCanvas=()=>({getContext:()=>({})});
+ BrowserCodeReader.drawImageOnCanvas=()=>{};
+ BrowserCodeReader.attachStreamToVideo=async()=>({});
+ BrowserCodeReader.cleanVideoSource=()=>{};
+ BrowserMultiFormatReader.prototype.getUserMedia=async()=>{
+  const track={stops:0,stop(){this.stops++},getCapabilities:()=>({})};
+  streams.push(track);return {getTracks:()=>[track],getVideoTracks:()=>[track]};
+ };
+ BrowserMultiFormatReader.prototype.decodeFromCanvas=decode;
+ class FastReader extends BrowserMultiFormatReader{constructor(){super(undefined,{delayBetweenScanAttempts:0,delayBetweenScanSuccess:0})}}
+ return {streams,load:async()=>({BrowserMultiFormatReader:FastReader}),restore(){
+  BrowserCodeReader.createCaptureCanvas=originals.canvas;BrowserCodeReader.drawImageOnCanvas=originals.draw;BrowserCodeReader.attachStreamToVideo=originals.attach;BrowserCodeReader.cleanVideoSource=originals.clean;BrowserMultiFormatReader.prototype.getUserMedia=originals.media;BrowserMultiFormatReader.prototype.decodeFromCanvas=originals.decode;
+ }};
+}
+
+test('a fatal installed ZXing frame failure is exposed once and allows an explicit retry',async()=>{
+ const fatal=new Error('Fatal canvas read failure'),errors=[],codes=[];let frames=0;
+ const decoder=realDecoder(()=>{frames++;if(frames===1)throw fatal;return {getText:()=> '5901234123457'}});
+ const scanner=createBarcodeScanner({video:()=>({}),load:decoder.load,onError:error=>errors.push(error),onCode:code=>{codes.push(code)}});
+ try{
+  await scanner.start();await flush();
+  assert.deepEqual(errors,[fatal]);assert.deepEqual(codes,[]);assert.equal(frames,1);assert.equal(decoder.streams.length,1);assert.ok(decoder.streams[0].stops>0,'Fatal decoding releases the camera stream');
+  await scanner.retry();await flush();
+  assert.equal(decoder.streams.length,2);assert.deepEqual(codes,['5901234123457']);assert.deepEqual(errors,[fatal]);assert.equal(decoder.streams[1].stops,1,'Callback and returned wrapper controls stop the successful stream once');
+ }finally{scanner.stop();decoder.restore()}
+});
+
+for(const Exception of [NotFoundException,ChecksumException,FormatException]){
+ test(`installed ZXing ${Exception.kind} frame failures keep scanning without errors or restarting the camera`,async()=>{
+  const errors=[],codes=[],decoded=deferred();let frames=0;
+  const decoder=realDecoder(()=>{if(++frames<=3)throw new Exception();return {getText:()=> '5901234123457'}});
+  const scanner=createBarcodeScanner({video:()=>({}),load:decoder.load,onError:error=>errors.push(error),onCode:code=>{codes.push(code);decoded.resolve()}});
+  try{
+   await scanner.start();assert.deepEqual(errors,[]);assert.equal(decoder.streams[0].stops,0);
+   await decoded.promise;await flush();
+   assert.deepEqual(errors,[]);assert.deepEqual(codes,['5901234123457']);assert.equal(frames,4);assert.equal(decoder.streams.length,1);assert.equal(decoder.streams[0].stops,1);
+  }finally{scanner.stop();decoder.restore()}
+ });
+}
+
+test('fatal callback errors stop one attempt, ignore later callbacks, and do not restart automatically',async()=>{
+ const decoder=fakeDecoder(),errors=[],codes=[],fatal=new Error('Camera frame failure');
+ const scanner=createBarcodeScanner({video:()=>({}),load:decoder.load,onError:error=>errors.push(error),onCode:code=>{codes.push(code)}});
+ await scanner.start();decoder.attempts[0].fail(fatal);decoder.attempts[0].fail(fatal);decoder.attempts[0].read('5901234123457');await flush();
+ assert.deepEqual(errors,[fatal]);assert.deepEqual(codes,[]);assert.equal(decoder.attempts[0].controls.stops,1);assert.equal(decoder.attempts.length,1);
+ await scanner.retry();decoder.attempts[0].fail(new Error('Old fatal failure'));decoder.attempts[1].read('5901234123457');await flush();
+ assert.deepEqual(errors,[fatal]);assert.deepEqual(codes,['5901234123457']);scanner.stop();
+});
+
+test('fatal Error names do not masquerade as retryable ZXing frame exceptions',async()=>{
+ const decoder=fakeDecoder(),errors=[],fatal=new Error('Not found');fatal.name='NotFoundException';
+ const scanner=createBarcodeScanner({video:()=>({}),load:decoder.load,onCode:()=>{},onError:error=>errors.push(error)});
+ await scanner.start();decoder.attempts[0].fail(fatal);
+ assert.deepEqual(errors,[fatal]);assert.equal(decoder.attempts[0].controls.stops,1);scanner.stop();
+});
 
 for(const failure of ['HTTP 404: nepoznat proizvod','HTTP 422: nema nutritivnih vrijednosti','network unavailable','Barkod nije valjan']){
  test(`scanner can explicitly retry after ${failure} without looping lookups`,async()=>{

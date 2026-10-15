@@ -28,6 +28,22 @@ test('Undo does not replace newer edits or resurrect a subsequently deleted edit
  assert.equal(undoStateChange({...after,items:[{...after.items[0],grams:360}]},before,after).items[0].grams,360);
  assert.deepEqual(undoStateChange({...after,items:[]},before,after).items,[]);
 });
+test('Undo an estimated-to-explicit quantity edit preserves a newer explicit quantity',()=>{
+ const before=state(),after={...before,items:[{...before.items[0],grams:240,isEstimate:false}]},current={...after,items:[{...after.items[0],grams:360}]};
+ const result=undoStateChange(current,before,after);
+ assert.equal(result.items[0].grams,360);assert.equal(result.items[0].isEstimate,false);check(result);
+ assert.equal(undoStateChange(after,before,after).items[0].grams,120);assert.equal(undoStateChange(after,before,after).items[0].isEstimate,true);
+});
+test('Undo a quantity edit preserves a later estimate metadata edit',()=>{
+ const before=state(),after={...before,items:[{...before.items[0],grams:240,isEstimate:false}]},current={...after,items:[{...after.items[0],isEstimate:true,meal:'dinner'}]};
+ const result=undoStateChange(current,before,after);
+ assert.deepEqual(result.items,current.items);check(result);
+});
+test('Undo an estimate-only edit remains independent of a later quantity edit',()=>{
+ const before=state(),after={...before,items:[{...before.items[0],isEstimate:false}]},current={...after,items:[{...after.items[0],grams:360}]};
+ const result=undoStateChange(current,before,after);
+ assert.equal(result.items[0].grams,360);assert.equal(result.items[0].isEstimate,true);check(result);
+});
 test('Undo addition removes its unchanged item but keeps modified and later added items',()=>{
  const before=initialState(false),added=item('added'),bread=item('later','bread'),after={...before,items:[added]};
  assert.deepEqual(undoStateChange({...after,items:[added,bread]},before,after).items,[bread]);
@@ -75,6 +91,29 @@ test('chat without stable IDs leaves changed prefixes intact and retains latest 
 test('ambiguous duplicate entity IDs reject Undo instead of dropping user records',()=>{
  const before=state(),after={...before,items:[]};assert.throws(()=>undoStateChange({...before,items:[...before.items,...before.items]},before,after),/različite oznake/);
 });
+test('food Undo keeps pre-existing duplicates in unrelated collections without trimming data',()=>{
+ const before=state(),food={...baseFoods[0],id:'duplicate-food'},favorite={id:'duplicate-favorite',name:'Doručak',items:before.items},weight={date,kg:75},waterEntry={id:'duplicate-water',date,amountMl:250,loggedAt:'2026-10-14T09:00:00.000Z'};
+ before.foods=[food,clone(food)];before.favorites=[favorite,clone(favorite)];before.weights=[weight,clone(weight)];before.waterEntries=[waterEntry,clone(waterEntry)];before.water={[date]:500};
+ const after={...before,items:[]},current={...clone(after),items:[item('later','bread')]},original=clone(current),result=undoStateChange(current,before,after);
+ assert.deepEqual(result.items,[...current.items,...before.items]);
+ for(const field of ['foods','favorites','weights','waterEntries'])assert.deepEqual(result[field],current[field]);
+ assert.deepEqual(result.water,current.water);assert.deepEqual(current,original);
+});
+test('profile Undo keeps duplicate items in an untouched diary collection',()=>{
+ const before=state();before.items.push(clone(before.items[0]));const after=clone(before);after.profile={...after.profile,name:'Uređeno'};
+ const result=undoStateChange(after,before,after);assert.deepEqual(result.items,before.items);assert.equal(result.profile.name,before.profile.name);check(result);
+});
+for(const [field,duplicate] of [
+ ['foods',{...baseFoods[0],id:'duplicate-food'}],
+ ['favorites',{id:'duplicate-favorite',name:'Doručak',items:[item('favorite-item')]}],
+ ['weights',{date,kg:75}],
+ ['waterEntries',{id:'duplicate-water',date,amountMl:250,loggedAt:'2026-10-14T09:00:00.000Z'}],
+]){
+ test(`Undo still rejects duplicate keys when ${field} is touched`,()=>{
+  const before=state();before[field]=[duplicate,clone(duplicate)];const after={...before,[field]:[]},original=clone(before);
+  assert.throws(()=>undoStateChange(before,before,after),/različite oznake/);assert.deepEqual(before,original);
+ });
+}
 test('Undo is immutable and restores original state when no subsequent changes exist',()=>{
  const before=state(),after=clone(before);after.items[0].grams=240;after.profile.name='Uređeno';const original=clone(after);
  assert.deepEqual(undoStateChange(after,before,after),before);assert.deepEqual(after,original);

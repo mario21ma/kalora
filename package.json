@@ -10,7 +10,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/diary-store.test.mjs tests/undo.test.mjs tests/quantity.test.mjs tests/ai-rate-limit.test.mjs tests/ai-input.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs tests/scanner.test.mjs",
+    "test": "node --test tests/domain.test.mjs tests/session.test.mjs tests/diary-store.test.mjs tests/undo.test.mjs tests/quantity.test.mjs tests/profile-draft.test.mjs tests/ai-rate-limit.test.mjs tests/ai-input.test.mjs tests/hydration.test.mjs tests/barcode.test.mjs tests/scanner.test.mjs",
     "ios:add": "cap add ios",
     "ios:sync": "cap sync ios",
     "ios:open": "cap open ios",

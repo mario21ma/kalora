@@ -6,8 +6,16 @@ type SavedBackup = { format: 'kalora-local-backup-v1', ownerId: string | null, s
 export const diaryStorageKey = (ownerId: string | null) => 'kalora-v1-' + (ownerId || 'guest');
 export const diaryBackupPrefix = (ownerId: string | null) => 'kalora-backup-v1-' + encodeURIComponent(ownerId || 'guest') + '-';
 const deletedAccountKey = (ownerId: string) => 'kalora-deleted-account-v1-' + encodeURIComponent(ownerId);
-export const isAccountDiaryDeleted = (ownerId: string | null) => ownerId !== null && localStorage.getItem(deletedAccountKey(ownerId)) === '1';
-export function markAccountDiaryDeleted(ownerId: string) { localStorage.setItem(deletedAccountKey(ownerId), '1'); }
+const rememberedDeletions = new WeakMap<object, Set<string>>();
+export const isAccountDiaryDeleted = (ownerId: string | null) => ownerId !== null &&
+  (rememberedDeletions.get(localStorage)?.has(ownerId) || localStorage.getItem(deletedAccountKey(ownerId)) === '1');
+export function markAccountDiaryDeleted(ownerId: string) {
+  // Cancel this tab's writers even when the durable marker cannot fit yet.
+  let deleted = rememberedDeletions.get(localStorage);
+  if (!deleted) { deleted = new Set(); rememberedDeletions.set(localStorage, deleted); }
+  deleted.add(ownerId);
+  localStorage.setItem(deletedAccountKey(ownerId), '1');
+}
 function assertDiaryWritable(ownerId: string | null) {
   if (isAccountDiaryDeleted(ownerId)) {
     clearAccountDiary(ownerId!);

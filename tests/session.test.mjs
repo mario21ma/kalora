@@ -147,3 +147,37 @@ test('ordinary logout does not mark the owner deleted or clear its diary and jou
  const {isAccountDiaryDeleted,writeDiaryJournal}=await import('../lib/diary-storage.ts');const owner='logout-keep-A';saveSession(valid(owner));localStorage.setItem('kalora-v1-'+owner,'A diary');const journal=writeDiaryJournal(owner,'writer','A recovery branch',null);
  globalThis.fetch=async()=>response(200,{});await signOut();assert.equal(isAccountDiaryDeleted(owner),false);assert.equal(localStorage.getItem('kalora-v1-'+owner),'A diary');assert.ok(localStorage.getItem(journal));saveSession(valid(owner));assert.equal(getSession().user.id,owner);
 });
+
+test('confirmed deletion cleans legacy sessions at a real capacity limit without touching other accounts',async t=>{
+ for(const free of [0,180])await t.test('legacy identity missing, free bytes '+free,async()=>{
+  const previous=globalThis.localStorage,values=new Map();let capacity=Infinity;
+  const store={getItem:key=>values.get(key)??null,setItem:(key,value)=>{
+   value=String(value);const next=new Map(values);next.set(key,value);
+   const used=[...next].reduce((sum,[k,v])=>sum+2*(k.length+v.length),0);
+   if(used>capacity)throw new DOMException('Full','QuotaExceededError');values.set(key,value);
+  },removeItem:key=>values.delete(key),key:index=>[...values.keys()][index]??null,get length(){return values.size}};
+  globalThis.localStorage=store;
+  try{
+   const {preserveDiaryBackup,isAccountDiaryDeleted}=await import('../lib/diary-storage.ts');
+   const owner='full-legacy-'+free;store.setItem('kalora-session',JSON.stringify(valid(owner)));
+   store.setItem('kalora-v1-'+owner,'A diary');preserveDiaryBackup(owner,'A backup','before-delete');
+   store.setItem('kalora-v1-keep-full-B','B diary');const otherBackup=preserveDiaryBackup('keep-full-B','B backup','before-delete');
+   store.setItem('kalora-v1-guest','guest diary');store.setItem('unrelated-filler','x'.repeat(1000));
+   capacity=[...values].reduce((sum,[k,v])=>sum+2*(k.length+v.length),0)+free;
+   let changes=0;const changed=()=>changes++;window.addEventListener('authchange',changed);
+   try{globalThis.fetch=async()=>response(200,{deleted:true});assert.deepEqual(await deleteAccount(),{deleted:true})}
+   finally{window.removeEventListener('authchange',changed)}
+   assert.equal(getSession(),null);assert.equal(store.getItem('kalora-session'),null);assert.equal(changes,1);
+   assert.equal(store.getItem('kalora-v1-'+owner),null);assert.equal([...values.keys()].filter(k=>k.startsWith('kalora-backup-v1-'+owner+'-')).length,0);
+   assert.equal(isAccountDiaryDeleted(owner),true);assert.equal(store.getItem('kalora-deleted-account-v1-'+owner),'1');
+   assert.equal(store.getItem('kalora-v1-keep-full-B'),'B diary');assert.ok(store.getItem(otherBackup));assert.equal(store.getItem('kalora-v1-guest'),'guest diary');assert.equal(store.getItem('unrelated-filler'),'x'.repeat(1000));
+  }finally{globalThis.localStorage=previous}
+ });
+});
+
+test('logout removes a legacy session even when identity metadata cannot be written',async()=>{
+ const previous=globalThis.localStorage,values=new Map([['kalora-session',JSON.stringify(valid('legacy-logout'))],['kalora-v1-legacy-logout','keep diary']]);
+ globalThis.localStorage={getItem:key=>values.get(key)??null,setItem:()=>{throw new DOMException('Full','QuotaExceededError')},removeItem:key=>values.delete(key),key:index=>[...values.keys()][index]??null,get length(){return values.size}};
+ try{globalThis.fetch=async()=>response(200,{});await signOut();assert.equal(values.has('kalora-session'),false);assert.equal(getSession(),null);assert.equal(values.get('kalora-v1-legacy-logout'),'keep diary')}
+ finally{globalThis.localStorage=previous}
+});

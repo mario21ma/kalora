@@ -96,6 +96,67 @@ test('malformed and unresolved explicit quantities require clarification instead
  }
 });
 
+test('product percentages describe food labels without becoming portion counts',()=>{
+ for(const [text,grams,unit,isEstimate] of [
+  ['150 g grčkog jogurta 2%',150,'g',false],
+  ['250 ml mlijeka 2,8%',250,'ml',false],
+  ['grčki jogurt 2%',150,'g',true],
+  ['mlijeko 2,8%',200,'ml',true]
+ ]){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.unknown,[],text);assert.equal(result.items.length,1,text);
+  assert.equal(result.items[0].grams,grams,text);assert.equal(quantityUnit(result.items[0]),unit,text);assert.equal(result.items[0].isEstimate,isEstimate,text);
+ }
+});
+
+test('digits embedded in a product name do not create another quantity',()=>{
+ const food={...baseFoods[0],id:'vitamin-b12',name:'VitaminB12',aliases:['vitaminb12','vitamin b12'],serving:10};
+ for(const [text,grams,isEstimate] of [['VitaminB12',10,true],['Vitamin B12',10,true],['25 g VitaminB12',25,false],['2 Vitamin B12',20,true]]){
+  const result=parseLocal(text,[food],'snack',date);assert.deepEqual(result.unknown,[],text);assert.equal(result.items.length,1,text);
+  assert.equal(result.items[0].grams,grams,text);assert.equal(result.items[0].isEstimate,isEstimate,text);
+ }
+ for(const name of ['Casein','Cashew']){
+  const product={...food,name,aliases:[name.toLowerCase()]};
+  const result=parseLocal('25 g '+name,[product],'snack',date);assert.deepEqual(result.unknown,[],name);assert.equal(result.items[0].grams,25,name);
+ }
+});
+
+test('half and leading-decimal amounts scale the stated unit rather than a default serving',()=>{
+ for(const [text,grams,unit] of [
+  ['pola litre mlijeka',500,'ml'],['pola kg banana',500,'g'],['pola ml mlijeka',.5,'ml'],
+  ['.5 l mlijeka',500,'ml'],['.5 g banana',.5,'g'],['1/2 l mlijeka',500,'ml'],
+  ['1 / 2 kg banana',500,'g'],['½ ml mlijeka',.5,'ml']
+ ]){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.unknown,[],text);assert.equal(result.items.length,1,text);
+  assert.equal(result.items[0].grams,grams,text);assert.equal(quantityUnit(result.items[0]),unit,text);assert.equal(result.items[0].isEstimate,false,text);
+ }
+ const portion=parseLocal('.5 banana',baseFoods,'snack',date);assert.deepEqual(portion.unknown,[]);assert.equal(portion.items[0].grams,60);assert.equal(portion.items[0].isEstimate,true);
+ for(const text of ['pola litre banana','1/2 ml maslinovog ulja','.5 l maslinovog ulja','pola kg mlijeka']){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.items,[],text);assert.equal(result.unknown.length,1,text);
+ }
+});
+
+test('supported Croatian hundreds are composed before food-list conjunctions split',()=>{
+ for(const [text,grams] of [
+  ['dvjesto g banana',200],['tristo g banana',300],['sto i pedeset g banana',150],
+  ['sto pedeset g banana',150],['dvjesto pedeset g banana',250],['dvjesto i dvadeset i dva g banana',222]
+ ]){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.unknown,[],text);assert.equal(result.items.length,1,text);
+  assert.equal(result.items[0].grams,grams,text);assert.equal(result.items[0].isEstimate,false,text);
+ }
+ const meal=parseLocal('sto i pedeset g banana i dva jaja',baseFoods,'snack',date);assert.deepEqual(meal.unknown,[]);assert.deepEqual(meal.items.map(item=>item.grams),[150,100]);
+});
+
+test('unsupported units and malformed or ambiguous amounts require confirmation',()=>{
+ for(const text of [
+  'četvrtina avokada','⅛ avokada','−1 banana','minus jedna banana','1.2.3 banana','0.1.2 g banana','2. banana',
+  'grama banana','1 kilogram banana','2 decilitra mlijeka','2 decilitar mlijeka','5 mg banana','2 dag banana','1 dkg banana','5 ug banana','2 čaše mlijeka','1 cup banana',
+  'polovina litre mlijeka','petsto banana','malo banana','pola banana 100 g','20 2 jaja','100 50 g banana',
+  '200 i 50 g banana','150 + 50 g banana'
+ ]){
+  const result=parseLocal(text,baseFoods,'snack',date);assert.deepEqual(result.items,[],text);assert.equal(result.unknown.length,1,text);
+ }
+});
+
 test('new food validation rejects impossible macros and energy while legacy snapshots remain readable',()=>{
  for(const basis of [
   {calories:42,protein:150,carbs:0,fat:0},

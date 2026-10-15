@@ -49,7 +49,12 @@ function undoValue(current:Value,before:Value,after:Value,path:string):Value{
  if(before===missing||after===missing)return equal(current,after)?before:current;
  if(isObject(current)&&isObject(before)&&isObject(after)){
   const result={...current};
+  // Quantity edits also describe whether that quantity was estimated. Restore
+  // the pair only while both still match, preserving later edits to either.
+  const quantityChanged=typeof before.grams==='number'&&typeof after.grams==='number'&&typeof before.isEstimate==='boolean'&&typeof after.isEstimate==='boolean'&&!equal(before.grams,after.grams);
+  if(quantityChanged&&equal(current.grams,after.grams)&&equal(current.isEstimate,after.isEstimate)){result.grams=before.grams;result.isEstimate=before.isEstimate}
   for(const key of new Set([...Object.keys(before),...Object.keys(after)])){
+   if(quantityChanged&&(key==='grams'||key==='isEstimate'))continue;
    const value=undoValue(Object.hasOwn(current,key)?current[key]:missing,Object.hasOwn(before,key)?before[key]:missing,Object.hasOwn(after,key)?after[key]:missing,path?path+'.'+key:key);
    if(value===missing)delete result[key];else result[key]=value;
   }
@@ -69,8 +74,8 @@ function undoValue(current:Value,before:Value,after:Value,path:string):Value{
 }
 
 export function undoStateChange(current:State,before:State,after:State):State{
- // Reject ambiguity rather than silently losing records with duplicate IDs.
- for(const state of [current,before,after])for(const [field,key] of [['items','id'],['foods','id'],['favorites','id'],['weights','date'],['waterEntries','id']] as const)index(state[field],key);
+ // Changed keyed collections reject ambiguity in undoList; untouched
+ // collections retain every record, including pre-existing duplicates.
  const result=undoValue(current,before,after,'') as State;
  const water:Record<string,number>=Object.fromEntries(Object.keys(current.water).map(date=>[date,0]));
  for(const entry of result.waterEntries)water[entry.date]=(water[entry.date]??0)+entry.amountMl;

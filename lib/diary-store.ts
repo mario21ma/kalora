@@ -9,6 +9,7 @@ function cloudRevision(value: unknown): number {
   return value;
 }
 const conflictMessage = 'Dnevnik je promijenjen na drugom uređaju. Izvezi lokalnu kopiju, zatim učitaj oblak.';
+const corruptMessage = 'Lokalna kopija nije čitljiva. Izvorni zapis je sačuvan. Preuzmi ga ili izričito učitaj dnevnik iz oblaka.';
 
 // The controller binds storage, requests and mutations to one account incarnation.
 // React only subscribes to its view; the same controller is exercised by tests.
@@ -135,7 +136,7 @@ export class DiaryStore {
         try { preserveDiaryBackup(action.scope.ownerId, raw, 'corrupt'); }
         catch { /* The main raw record remains untouched even when storage is full. */ }
         if (!this.isActionCurrent(action)) return;
-        this.publish({ recovery: 'corrupt', error: 'Lokalna kopija nije čitljiva. Izvorni zapis je sačuvan. Preuzmi ga ili izričito učitaj dnevnik iz oblaka.', backups: getDiaryBackups(action.scope.ownerId) });
+        this.publish({ recovery: 'corrupt', error: corruptMessage, backups: getDiaryBackups(action.scope.ownerId) });
       }
     }
     // An interrupted or simultaneous tab write can leave a branch that differs
@@ -156,7 +157,9 @@ export class DiaryStore {
     if (action.scope.ownerId && navigator.onLine) {
       try {
         const cloud = await cloudCall('load_diary', {}, action.scope);
-        if (!this.isActionCurrent(action)) return;
+        // Explicit recovery/reset can complete while this initial read is still
+        // pending. Its older response must not replace that diary or later edits.
+        if (!this.isActionCurrent(action) || this.record) return;
         if (cloud?.state) {
           const remote = { state: stateSchema.parse(cloud.state), revision: cloudRevision(cloud.revision), dirty: false };
           this.publish({ cloudAvailable: true });
@@ -171,7 +174,7 @@ export class DiaryStore {
         if (this.view.recovery === 'corrupt') return;
         this.publish({ status: local?.dirty ? 'Čeka spremanje' : 'Sinkronizirano' });
       } catch (e) {
-        if (!this.isActionCurrent(action)) return;
+        if (!this.isActionCurrent(action) || this.record) return;
         if (e instanceof SessionExpiredError || e instanceof StaleSessionError) return;
         this.publish({ error: 'Oblak nije dostupan. Promjene ostaju na ovom uređaju.', status: 'Izvanmrežni način' });
       }
@@ -181,6 +184,9 @@ export class DiaryStore {
   };
   sync = async (action = this.captureAction(), pullClean = true): Promise<void> => {
     if (!this.isActionCurrent(action)) return;
+    // A corrupt local record blocks writes, but must not block checking whether
+    // the cloud has recovered after an offline/503 boot. Replacement stays explicit.
+    if (this.blocked && this.view.recovery === 'corrupt') return this.checkRecoveryCloud(action);
     if (this.blocked) throw new Error('Najprije riješi sukob spremljenih podataka.');
     if (this.busy?.generation === action.generation) {
       await this.busy.promise;
@@ -224,6 +230,29 @@ export class DiaryStore {
         }
         else { this.syncError = message; this.publish({ error: message }); }
         this.publish({ status: 'Spremljeno lokalno · čeka vezu' });
+        throw e;
+      } finally { if (this.busy === pending) this.busy = null; }
+    })();
+    this.busy = pending;
+    await pending.promise;
+  };
+  private checkRecoveryCloud = async (action: DiaryAction): Promise<void> => {
+    if (!navigator.onLine || !action.scope.ownerId) return;
+    if (this.busy?.generation === action.generation) return this.busy.promise;
+    const pending = { generation: action.generation, promise: Promise.resolve() };
+    pending.promise = (async () => {
+      try {
+        const result = await cloudCall('load_diary', {}, action.scope);
+        if (!this.isActionCurrent(action) || this.view.recovery !== 'corrupt') return;
+        if (result?.state) {
+          stateSchema.parse(result.state);
+          cloudRevision(result.revision);
+        }
+        this.publish({ cloudAvailable: !!result?.state, error: corruptMessage, status: result?.state ? 'Oblak je dostupan za oporavak' : 'Oblak još nema spremljen dnevnik' });
+      } catch (e) {
+        if (!this.isActionCurrent(action) || this.view.recovery !== 'corrupt') return;
+        if (e instanceof SessionExpiredError || e instanceof StaleSessionError) return;
+        this.publish({ cloudAvailable: false, error: `${corruptMessage} Oblak trenutačno nije dostupan. Pokušaj ponovno kada se veza vrati.`, status: 'Izvanmrežni način' });
         throw e;
       } finally { if (this.busy === pending) this.busy = null; }
     })();

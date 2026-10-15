@@ -1,7 +1,7 @@
 import nodeTest, {before, after} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {initialState, makeItem, baseFoods, dateKey, dayOffset, stateSchema} from '../lib/domain.ts';
+import {initialState, makeItem, baseFoods, dateKey, dayOffset, stateSchema, quantityUnit} from '../lib/domain.ts';
 import {
   baseURL, mockSession, createHarness, seed, switchAccount, localRecord,
   waitDiary, addFood, addWater, undoToast, activeAccount, savedRecord, deferred,
@@ -430,3 +430,130 @@ test('terms and privacy are linked from registration, profile and privacy page',
     assert(await page.locator('a[href="/privacy"]').count());
   });
 });
+
+test('native full localStorage deletion clears a legacy session and own backups only', async () => {
+  const id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', other = 'other-full-storage';
+  const original = record('Native quota user'), preserved = record('Preserved account');
+  await withHarness({[id]: original}, async ({page}) => {
+    await seed(page, id, original); await waitDiary(page);
+    await page.locator('.bottom-nav').getByRole('tab', {name: 'Profil', exact: true}).click();
+    await page.getByRole('button', {name: 'Izbriši račun i podatke', exact: true}).click();
+    await page.getByPlaceholder('IZBRIŠI', {exact: true}).fill('IZBRIŠI');
+    const before = await page.evaluate(({id, other, preserved}) => {
+      localStorage.removeItem('kalora-auth-identity'); // Legacy session, exact confirmed failure.
+      const ownKey = 'kalora-backup-v1-' + id + '-quota', otherKey = 'kalora-backup-v1-' + other + '-quota';
+      const raw = JSON.stringify({...preserved, dirty: false});
+      const backup = ownerId => JSON.stringify({format: 'kalora-local-backup-v1', ownerId, savedAt: new Date().toISOString(), reason: 'test', raw});
+      localStorage.setItem(ownKey, backup(id)); localStorage.setItem(otherKey, backup(other));
+      localStorage.setItem('kalora-v1-' + other, raw); localStorage.setItem('kalora-v1-guest', raw);
+      const filler = 'x'.repeat(6 * 1024 * 1024), key = 'native-quota-filler';
+      let low = 0, high = filler.length;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        try {localStorage.setItem(key, filler.slice(0, middle)); low = middle}
+        catch (error) {if (error.name !== 'QuotaExceededError') throw error; high = middle - 1}
+      }
+      localStorage.setItem(key, filler.slice(0, low));
+      let full = false;
+      try {localStorage.setItem(key, filler.slice(0, low + 1))} catch (error) {full = error.name === 'QuotaExceededError'}
+      return {full, native: Storage.prototype.setItem.toString().includes('[native code]'), raw, otherBackup: localStorage.getItem(otherKey), fillerLength: low};
+    }, {id, other, preserved});
+    assert(before.native && before.full, 'Use the actual Chromium quota, without replacing Storage methods');
+    const deletion = page.waitForResponse(response => new URL(response.url()).pathname === '/api/account/delete');
+    await page.getByRole('button', {name: 'Trajno izbriši račun', exact: true}).click();
+    assert.equal((await deletion).status(), 200);
+    await page.getByRole('heading', {name: 'Dobrodošao u Kaloru', exact: true}).waitFor();
+    const after = await page.evaluate(({id, other}) => ({
+      session: localStorage.getItem('kalora-session'), main: localStorage.getItem('kalora-v1-' + id),
+      ownKeys: Object.keys(localStorage).filter(key => key.startsWith('kalora-backup-v1-' + id + '-')),
+      marker: localStorage.getItem('kalora-deleted-account-v1-' + id),
+      other: localStorage.getItem('kalora-v1-' + other), guest: localStorage.getItem('kalora-v1-guest'),
+      otherBackup: localStorage.getItem('kalora-backup-v1-' + other + '-quota'),
+      fillerLength: localStorage.getItem('native-quota-filler')?.length,
+    }), {id, other});
+    assert.equal(after.session, null); assert.equal(after.main, null); assert.deepEqual(after.ownKeys, []); assert.equal(after.marker, '1');
+    assert.equal(after.other, before.raw); assert.equal(after.guest, before.raw);
+    assert.equal(after.otherBackup, before.otherBackup); assert.equal(after.fillerLength, before.fillerLength);
+  }, {api: async ({route, url}) => {
+    if (url.pathname === '/api/account/delete') {await route.fulfill({json: {deleted: true}}); return true}
+    return false;
+  }});
+});
+
+test('corrupt recovery can retry after the initial 503 without refreshing', async () => {
+  const id = 'recovery-503', original = record('Recovered after 503'), raw = '{original unreadable';
+  let unavailable = true, loads = 0;
+  await withHarness({[id]: original}, async ({page}) => {
+    await seed(page, id, original, raw);
+    const load = page.getByRole('button', {name: 'Učitaj oblak', exact: true});
+    await load.waitFor(); assert.equal(loads, 1); assert.equal(await load.isEnabled(), true);
+    assert.equal(await page.evaluate(id => localStorage.getItem('kalora-v1-' + id), id), raw);
+    unavailable = false;
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await page.waitForFunction(() => document.querySelector('[role="alert"]')?.textContent.includes('Izvorni zapis je sačuvan'));
+    assert.equal(loads, 2); assert.equal(await page.getByRole('button', {name: 'Dodaj hranu', exact: true}).count(), 0);
+    assert.equal(await page.evaluate(id => localStorage.getItem('kalora-v1-' + id), id), raw, 'Rechecking does not silently replace data');
+    await load.click(); await waitDiary(page);
+    assert.deepEqual((await localRecord(page, id)).state, original.state);
+    const backups = await page.evaluate(id => Object.keys(localStorage).filter(key => key.startsWith('kalora-backup-v1-' + id + '-')).map(key => JSON.parse(localStorage.getItem(key))), id);
+    assert(backups.some(backup => backup.raw === raw));
+  }, {rpc: async ({route, entry}) => {
+    if (!entry.path.endsWith('/load_diary')) return false;
+    loads++;
+    if (unavailable) {await route.fulfill({status: 503, json: {message: 'Unavailable'}}); return true}
+    return false;
+  }});
+});
+
+for (const scenario of ['clean', 'disjoint', 'conflict-keep', 'conflict-incoming']) {
+  test(`profile replacement reconciles the mounted ${scenario} draft`, async () => {
+    const id = 'profile-' + scenario, original = record('Original profile');
+    await withHarness({[id]: original}, async ({page}) => {
+      await seed(page, id, original); await waitDiary(page);
+      await page.locator('.bottom-nav').getByRole('tab', {name: 'Profil', exact: true}).click();
+      const name = page.getByLabel('Kako se zoveš?', {exact: true}), weight = page.getByLabel('Trenutna težina (kg)', {exact: true});
+      if (scenario !== 'clean') await name.fill('Unsaved user name');
+      if (scenario.startsWith('conflict')) await weight.fill('88');
+      const imported = structuredClone(original.state);
+      imported.profile.weight = 95; imported.profile.targets.calories = 2700;
+      await page.locator('.upload-button input[type="file"]').setInputFiles({name: 'import.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(imported))});
+      await page.waitForFunction(id => JSON.parse(localStorage.getItem('kalora-v1-' + id)).state.profile.weight === 95, id);
+      assert.equal(await name.inputValue(), scenario === 'clean' ? original.state.profile.name : 'Unsaved user name');
+      assert.equal(await page.getByLabel('Kalorije (kcal)', {exact: true}).inputValue(), '2700');
+      const save = page.getByRole('button', {name: 'Spremi profil', exact: true});
+      if (scenario.startsWith('conflict')) {
+        assert.equal(await weight.inputValue(), '88'); assert.equal(await save.isEnabled(), false);
+        await page.getByRole('button', {name: scenario === 'conflict-keep' ? 'Zadrži moje izmjene' : 'Preuzmi spremljene vrijednosti', exact: true}).click();
+      }
+      assert.equal(await weight.inputValue(), scenario === 'conflict-keep' ? '88' : '95');
+      await save.click();
+      const final = (await localRecord(page, id)).state.profile;
+      assert.equal(final.weight, scenario === 'conflict-keep' ? 88 : 95); assert.equal(final.targets.calories, 2700);
+      assert.equal(final.name, scenario === 'clean' ? original.state.profile.name : 'Unsaved user name');
+    });
+  });
+}
+
+for (const amount of [0.5, 1.25]) {
+  test(`meal editing preserves valid ${amount} g and blocks invalid visible quantities`, async () => {
+    const id = 'small-quantity-' + amount, original = record('Small amount'); original.state.items[0].grams = amount;
+    if (amount === 1.25) original.state.items[0].unit = 'g'; // Explicit and legacy implicit grams both remain valid.
+    await withHarness({[id]: original}, async ({page}) => {
+      await seed(page, id, original); await waitDiary(page);
+      await page.getByRole('button', {name: /^Doručak/}).click();
+      await page.getByRole('button', {name: 'Uredi Banana', exact: true}).click();
+      const quantity = page.getByLabel('Količina (g)', {exact: true}), save = page.getByRole('button', {name: 'Spremi', exact: true});
+      assert.equal(await quantity.inputValue(), String(amount));
+      for (const invalid of ['0', '', 'abc', '-1', '5001']) {
+        await quantity.fill(invalid); assert.equal(await save.isEnabled(), false); assert.equal(await quantity.getAttribute('aria-invalid'), 'true');
+        assert.deepEqual((await localRecord(page, id)).state.items, original.state.items);
+      }
+      await quantity.fill(String(amount));
+      await page.getByLabel('Premjesti u obrok', {exact: true}).click(); await page.getByRole('option', {name: 'Ručak', exact: true}).click();
+      await save.click(); await page.waitForFunction(id => JSON.parse(localStorage.getItem('kalora-v1-' + id)).state.items[0].meal === 'lunch', id);
+      const item = (await localRecord(page, id)).state.items[0]; assert.equal(item.grams, amount); assert.equal(quantityUnit(item), 'g');
+      assert.equal(item.unit, original.state.items[0].unit, 'Editing a meal preserves the stored unit representation');
+      assert.equal(await page.getByRole('button', {name: 'Spremi', exact: true}).count(), 0);
+    });
+  });
+}

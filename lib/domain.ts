@@ -102,39 +102,58 @@ export function suggestTargets(p:Profile):Nutrients{
 }
 // Interpret explicit quantities before splitting the list: e.g. "dvadeset i dva"
 // and "jedan i pol" describe one amount, rather than two independent foods.
-const countWords:Record<string,number>={nula:0,jedan:1,jedna:1,jedno:1,jednu:1,dva:2,dvije:2,dvoje:2,tri:3,cetiri:4,cetvero:4,pet:5,sest:6,sedam:7,osam:8,devet:9,deset:10,jedanaest:11,dvanaest:12,trinaest:13,cetrnaest:14,petnaest:15,sesnaest:16,sedamnaest:17,osamnaest:18,devetnaest:19,dvadeset:20,trideset:30,cetrdeset:40,pedeset:50,sezdeset:60,sedamdeset:70,osamdeset:80,devedeset:90,sto:100,stotinu:100,tisucu:1000};
+const countWords:Record<string,number>={nula:0,jedan:1,jedna:1,jedno:1,jednu:1,dva:2,dvije:2,dvoje:2,tri:3,cetiri:4,cetvero:4,pet:5,sest:6,sedam:7,osam:8,devet:9,deset:10,jedanaest:11,dvanaest:12,trinaest:13,cetrnaest:14,petnaest:15,sesnaest:16,sedamnaest:17,osamnaest:18,devetnaest:19,dvadeset:20,trideset:30,cetrdeset:40,pedeset:50,sezdeset:60,sedamdeset:70,osamdeset:80,devedeset:90,sto:100,stotinu:100,dvjesto:200,dvjesta:200,tristo:300,trista:300,tisucu:1000};
 const unicodeFractions:Record<string,number>={'½':.5,'¼':.25,'¾':.75,'⅓':1/3,'⅔':2/3};
 const amountUnits:Record<string,{unit:'g'|'ml',factor:number}>={kg:{unit:'g',factor:1000},kilograma:{unit:'g',factor:1000},g:{unit:'g',factor:1},gram:{unit:'g',factor:1},grama:{unit:'g',factor:1},grami:{unit:'g',factor:1},gr:{unit:'g',factor:1},ml:{unit:'ml',factor:1},mililitar:{unit:'ml',factor:1},mililitra:{unit:'ml',factor:1},mililitara:{unit:'ml',factor:1},cl:{unit:'ml',factor:10},dl:{unit:'ml',factor:100},l:{unit:'ml',factor:1000},litra:{unit:'ml',factor:1000},litre:{unit:'ml',factor:1000},litara:{unit:'ml',factor:1000}};
-const amountPattern=new RegExp('(\\d+(?:\\.\\d+)?)\\s*('+Object.keys(amountUnits).join('|')+')\\b');
+const quantityNumber='(?:\\d+(?:\\.\\d+)?|\\.\\d+)';
+const amountPattern=new RegExp('(?<![\\w.])('+quantityNumber+')\\s*('+Object.keys(amountUnits).join('|')+')\\b');
+const quantityPattern=new RegExp('(?<![\\w.])'+quantityNumber+'(?![\\d.])','g');
+const countPattern=new RegExp('(?<![\\w.])('+quantityNumber+')(?![\\w.])');
+const percentagePattern=new RegExp('(?<![\\w.])'+quantityNumber+'\\s*%','g');
+// Recognize measure words even when their amount/unit is unsupported. A cup,
+// bottle or unparsed mass unit must not become the food's default serving.
+const measurePattern=new RegExp('\\b(?:'+Object.keys(amountUnits).join('|')+'|(?:kilo|mili|mikro)?gram[a-z]*|(?:mili|centi|deci)?lit(?:ar|r)[a-z]*|mg|ug|mcg|dag|dkg|oz|lb|ounce[a-z]*|pound[a-z]*|cup[a-z]*|(?:salic|cas|boc|bocic|sak)(?:a|e|i|u|om|ama)|paket[a-z]*|pakiranj[a-z]*|vrecic[a-z]*|zdjel[a-z]*|tanjur[a-z]*|porcij[a-z]*)\\b');
+const numberWords=(accept:(value:number)=>boolean)=>Object.keys(countWords).filter(word=>accept(countWords[word])).join('|');
+const onesWords=numberWords(value=>value>0&&value<10),tensWords=numberWords(value=>value>=20&&value<100&&value%10===0),hundredWords=numberWords(value=>value>=100&&value<1000),underHundredWords=numberWords(value=>value>0&&value<100);
 function normalizeQuantities(text:string){
  return norm(text).replace(/(\d),(\d)/g,'$1.$2')
   .replace(/(\d+)\s*([½¼¾⅓⅔])/g,(_,whole,fraction)=>String(Number(whole)+unicodeFractions[fraction]))
   .replace(/[½¼¾⅓⅔]/g,fraction=>String(unicodeFractions[fraction]))
   .replace(/\b(\d+)\s+(\d+)\s*\/\s*(\d+)\b/g,(original,whole,numerator,denominator)=>Number(denominator)>0?String(Number(whole)+Number(numerator)/Number(denominator)):original)
   .replace(/\b(\d+)\s*\/\s*(\d+)\b/g,(original,numerator,denominator)=>Number(denominator)>0?String(Number(numerator)/Number(denominator)):original)
+  .replace(new RegExp('\\b('+hundredWords+')\\s+(?:i\\s+)?('+tensWords+')\\s+(?:i\\s+)?('+onesWords+')\\b','g'),(_,hundreds,tens,ones)=>String(countWords[hundreds]+countWords[tens]+countWords[ones]))
+  .replace(new RegExp('\\b('+hundredWords+')\\s+(?:i\\s+)?('+underHundredWords+')\\b','g'),(_,hundreds,rest)=>String(countWords[hundreds]+countWords[rest]))
+  .replace(new RegExp('\\b('+tensWords+')\\s+(?:i\\s+)?('+onesWords+')\\b','g'),(_,tens,ones)=>String(countWords[tens]+countWords[ones]))
   .replace(new RegExp('\\b('+Object.keys(countWords).join('|')+')\\b','g'),word=>String(countWords[word]))
-  .replace(/\b([2-9]0)\s+(?:i\s+)?([1-9])\b/g,(_,tens,ones)=>String(Number(tens)+Number(ones)))
-  .replace(/\b(\d+)\s+i\s+(?:pol|pola)\b/g,(_,whole)=>String(Number(whole)+.5));
+  .replace(/\b(\d+)\s+i\s+(?:pol|pola)\b/g,(_,whole)=>String(Number(whole)+.5))
+  .replace(/\b(?:pol|pola|polovic[a-z]*)\b/g,'0.5');
 }
 export function parseLocal(text:string,foods:Food[],meal:MealType,date:string){
  const normalized=normalizeQuantities(text);
  const inferred=normalized.includes('doruc')?'breakfast':normalized.includes('rucak')?'lunch':normalized.includes('vecer')?'dinner':meal;
- const chunks=normalized.replace(/\b(po jeo|pojeo sam|dodaj|dorucak|rucak|vecera)\s*:?/g,'').split(/[,;+]|\s+i\s+/).map(s=>s.trim()).filter(Boolean);
+ // An unresolved conjunction between two amounts is one ambiguous quantity,
+ // whereas a conjunction after a named food still separates meal items.
+ const chunks=normalized.replace(/\b(po jeo|pojeo sam|dodaj|dorucak|rucak|vecera)\s*:?/g,'')
+  .replace(new RegExp('(?<![\\w.])('+quantityNumber+')\\s*(?:i|\\+)\\s*(?='+quantityNumber+')','g'),'$1 ')
+  .split(/[,;+]|\s+i\s+/).map(s=>s.trim()).filter(Boolean);
  const unknown:string[]=[],items:Item[]=[];
  for(const s of chunks){
   const food=[...foods].sort((a,b)=>Math.max(...b.aliases.map(x=>x.length),b.name.length)-Math.max(...a.aliases.map(x=>x.length),a.name.length)).find(f=>[norm(f.name),...f.aliases.map(norm)].some(a=>s.includes(a)));
   // Do not silently turn malformed or unresolved explicit quantities into one serving.
-  const quantities=s.match(/\d+(?:\.\d+)?(?![\d.])/g)||[];
-  const unresolved=/\/|(?:^|\s)-\s*\d|\d\s*[-–]\s*\d|\b(?:nekoliko|par|vise|manje|mnogo|puno|nekolicina|[a-z]*desetak|[a-z]*stotin[a-z]*|[a-z]*tisuc[a-z]*|[a-z]*cetir[a-z]*)\b/.test(s)||quantities.length>1;
+  // Percentages describe the product; digits inside names such as B12 are not
+  // amounts. Keep the original chunk for food matching and clarification.
+  const quantityText=s.replace(percentagePattern,''),quantities=quantityText.match(quantityPattern)||[];
+  const unresolved=/\/|\p{No}|(?:^|\s)[-−–]\s*(?:\d|\.)|\d\s*[-–]\s*\d|\d*\.\d*\.\d|\b(?:minus|nekoliko|par|vise|manje|mnogo|puno|malo|nekolicina|cetvrt[a-z]*|trecin[a-z]*|osmin[a-z]*|polovin[a-z]*|petsto|sesto|sedamsto|osamsto|devetsto|[a-z]*desetak|[a-z]*stotin[a-z]*|[a-z]*tisuc[a-z]*|[a-z]*cetir[a-z]*)\b/u.test(quantityText)||quantities.length>1||(!quantities.length&&/(?<!\w)(?:\d|\.\d)/.test(quantityText));
   if(!food||unresolved){unknown.push(s);continue}
-  const amount=s.match(amountPattern);
+  const amount=quantityText.match(amountPattern),count=quantityText.match(countPattern);
+  if(measurePattern.test(amount?quantityText.replace(amount[0],''):quantityText)||(!amount&&quantities.length>0&&!count)){unknown.push(s);continue}
   let grams=food.serving,isEstimate=true;
   if(amount){
    const {unit,factor}=amountUnits[amount[2]];
    if(unit!==quantityUnit(food)){unknown.push(s);continue}
    grams=Number(amount[1])*factor;isEstimate=/oko|otprilike/.test(s);
   }else{
-   const count=s.match(/\b(\d+(?:\.\d+)?)\b/),number=(count?Number(count[1]):1)*(/pola|polovic/.test(s)?.5:1);
+   const number=count?Number(count[1]):1;
    grams*=number;
    if(/velik/.test(s))grams*=1.25;
    if(/mal[oa]/.test(s))grams*=.7;

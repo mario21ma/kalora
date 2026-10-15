@@ -44,11 +44,18 @@ export function authScopeKey(scope: AuthScope) { return JSON.stringify([scope.ow
 function announceAuthChange() { window.dispatchEvent(new Event('authchange')); }
 export function saveSession(s: Session | null) {
   if (s && isAccountDiaryDeleted(s.user.id)) throw new SessionExpiredError();
+  if (!s) {
+    // Logging out must never depend on allocating a new key. Removing the old
+    // session also makes room for migrated sessions without an identity key.
+    localStorage.removeItem(SESSION_KEY);
+    try { localStorage.setItem(IDENTITY_KEY, globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`); }
+    catch { localStorage.removeItem(IDENTITY_KEY); }
+    announceAuthChange();
+    return;
+  }
   localStorage.setItem(IDENTITY_KEY, globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`);
-  if (s) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    sessionStorage.removeItem('kalora-auth-recovery');
-  } else localStorage.removeItem(SESSION_KEY);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  sessionStorage.removeItem('kalora-auth-recovery');
   announceAuthChange();
 }
 export function subscribeAuth(listener: () => void) {
@@ -183,19 +190,20 @@ export async function deleteAccount() {
     // a journal during cleanup. Never log out a selected B account.
     // Only a server-confirmed deletion writes this permanent UUID tombstone.
     // It cancels writers that already passed their entry guard before cleanup.
-    let invalidatedSelectedOwner = false;
-    try { markAccountDiaryDeleted(s.user.id); }
-    catch {
-      // A full device can make room by clearing this deleted owner's data, then
-      // install the small tombstone and repeat cleanup to catch interrupted writes.
-      if (readStoredSession()?.user.id === s.user.id) { saveSession(null); invalidatedSelectedOwner = true; }
-      clearAccountDiary(s.user.id);
-      markAccountDiaryDeleted(s.user.id);
-    }
+    let durableMarker = false;
+    try { markAccountDiaryDeleted(s.user.id); durableMarker = true; }
+    catch { /* The in-memory marker already stops this tab's writers. */ }
     const deletedOwnerSelected = readStoredSession()?.user.id === s.user.id;
-    if (deletedOwnerSelected) saveSession(null);
+    try { if (deletedOwnerSelected) saveSession(null); }
+    finally { clearAccountDiary(s.user.id); }
+    if (!durableMarker) {
+      // Own data/session removal normally frees enough space. Never discard
+      // another account's data merely to persist this deletion metadata.
+      try { markAccountDiaryDeleted(s.user.id); }
+      catch { /* Own data is gone; the in-memory deletion still remains active. */ }
+    }
     clearAccountDiary(s.user.id);
-    if (deletedOwnerSelected || invalidatedSelectedOwner) return d;
+    if (deletedOwnerSelected) return d;
   }
   assertAuthScope(scope);
   if (r.status === 401) { expireSession(s, scope); throw new SessionExpiredError(); }

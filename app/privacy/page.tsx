@@ -52,7 +52,7 @@ export default function PrivacyPage(){
 
    <section><h2>11. Promjene ove politike</h2><p>Politika se može ažurirati kada se promijene funkcije aplikacije, pružatelji usluga ili pravne obveze. Datum zadnje izmjene prikazan je na vrhu stranice.</p></section>
 
-   <div className="legal-actions"><Link className="primary" href="/">Natrag u Kaloru</Link></div>
+   <div className="legal-actions"><Link className="primary" href="/">Natrag u Kaloru</Link><Link className="secondary" href="/terms">Uvjeti korištenja</Link></div>
   </article>
  </main>;
 }
