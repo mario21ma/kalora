@@ -689,14 +689,18 @@ body{background:var(--bg)}
 .layout-compact .energy-content.food-only .body-silhouette.food{justify-self:end;max-width:120px}
 .layout-compact .macro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:0 0 14px;padding:12px 0;border-top:1px solid #213448;border-bottom:1px solid #213448}
 .layout-compact .macro{display:flex;align-items:center;flex-direction:column;min-width:0;padding:0 7px;text-align:center}
+.layout-compact .macro.protein{--compact-macro-color:#2fe7aa}
+.layout-compact .macro.carbs{--compact-macro-color:#3ba8ff}
+.layout-compact .macro.fat{--compact-macro-color:#ff8a42}
 .layout-compact .macro+.macro{border-left:1px solid #213448}
 .layout-compact .macro-orb{display:none}
 .layout-compact .energy-card .macro-label{display:flex;flex-direction:column;gap:4px;min-width:0;margin:0}
-.layout-compact .energy-card .macro-label>span{display:flex!important;align-items:center;justify-content:center;gap:5px;color:#c6d4e5;font-size:.75rem;line-height:1.35;white-space:normal}
+.layout-compact .energy-card .macro-label>span{display:flex!important;align-items:center;justify-content:center;gap:5px;color:var(--compact-macro-color);font-size:.75rem;line-height:1.35;white-space:normal}
 .layout-compact .energy-card .macro-label>span i{display:none}
 .layout-compact .energy-card .macro-label b{display:block;color:#f2f7fd;font-size:.85rem;line-height:1.45;white-space:normal;font-variant-numeric:tabular-nums}
 .layout-compact .energy-card .macro-label small{font-size:.75rem;color:#aabbcf;white-space:normal}
-.layout-compact .macro-progress{display:none!important}
+.layout-compact .macro-progress{display:block!important;flex-shrink:0;width:100%;height:5px!important;margin-top:9px;background:#1a2c3e!important;border-radius:999px}
+.layout-compact .macro-progress [data-slot=progress-indicator]{background:var(--compact-macro-color)}
 .layout-compact .home-water-block{position:relative;z-index:4;display:grid;grid-template-columns:minmax(0,1fr) minmax(56px,.6fr);align-items:center;gap:10px 14px;border:1px solid #1f3b50;background:rgba(14,44,66,.3);border-radius:15px;padding:12px;margin-bottom:12px}
 .layout-compact .home-water-block .water-summary{justify-content:flex-start;margin:0;gap:8px;font-size:.82rem;line-height:1.5;text-align:left;color:#78dcff;text-shadow:none}
 .layout-compact .home-water-block .water-summary b{font-weight:600}
