@@ -9,3 +9,11 @@ U ZIP-u prvo otvori `PRVO_PROCITAJ.md`. Zamijeni 18 postojećih i dodaj 3 nove d
 Izvor: `a83a04ebe87bcb963f5575348d84b1a803ff37b4`, baza: `7aead637ea4ed8d910537438ec90ef734eaa1e37`.
 
 Provjereno: 198 osnovnih, 7 SQL i 36 pregledničkih testova, TypeScript i produkcijski build. Produkcija nije testirana ni mijenjana.
+
+## Novi vizualni prijedlozi — bez izmjene aplikacije
+
+- [Klasični i Kompaktni](Kalora-klasicni-i-kompaktni.png)
+- [Dodavanje hrane i postavke izgleda](Kalora-unos-i-postavke.png)
+- [Obrazloženje i redoslijed unapređenja](PRIJEDLOG_UNAPRJEDENJA.md)
+
+Ovo su koncepti. ZIP s popravcima i aplikacijski kod nisu mijenjani.
