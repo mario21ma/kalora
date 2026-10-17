@@ -6,7 +6,7 @@ export const metadata:Metadata={
  description:'Kako Kalora obrađuje podatke povezane s dnevnikom prehrane, računom, AI funkcijama i barkod skenerom.'
 };
 
-const updated='29. rujna 2026.';
+const updated='17. listopada 2026.';
 
 export default function PrivacyPage(){
  const supportEmail=process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim();
@@ -25,6 +25,7 @@ export default function PrivacyPage(){
     <li><b>Profil i ciljevi:</b> ime ili nadimak, dob, spol za izračun, visina, težina, ciljana težina, razina aktivnosti, broj treninga i postavljeni kalorijski/makro ciljevi.</li>
     <li><b>Dnevnik:</b> unesena hrana, količine, nutritivne vrijednosti, dnevni unos vode, omiljeni obroci, dnevni ciljevi i zapisi težine.</li>
     <li><b>AI sadržaj:</b> tekst koji pošalješ funkciji „Procijeni s AI” ili AI razgovoru te relevantan kontekst dnevnika potreban za odgovor.</li>
+    <li><b>Obavijesti:</b> ako ih uključiš na prijavljenom računu, pohranjujemo pretplatu preglednika za Web Push i tvoje odabrane vrste podsjetnika. Pretplata sadrži adresu push usluge i kriptografske ključeve potrebne za isporuku.</li>
     <li><b>Tehnički podaci:</b> nužni podaci zahtjeva i sigurnosni/operativni zapisi koje mogu obrađivati hosting i infrastrukturni pružatelji.</li>
    </ul></section>
 
@@ -39,6 +40,7 @@ export default function PrivacyPage(){
     <li>za sinkronizaciju podataka između tvojih uređaja kada koristiš račun;</li>
     <li>za procjenu nutritivnih vrijednosti i AI odgovore koje izričito zatražiš;</li>
     <li>za pronalazak proizvoda nakon skeniranja barkoda;</li>
+    <li>za slanje opcionalnih podsjetnika i obavijesti koje uključiš u Profil. Push pretplatu možeš ukloniti gašenjem svih obavijesti ili brisanjem računa.</li>
     <li>za sigurnost, pouzdanost i otklanjanje tehničkih pogrešaka.</li>
    </ul><p>Kalora trenutačno ne koristi oglasne trackere i ne prodaje osobne podatke.</p></section>
 

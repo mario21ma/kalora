@@ -1,4 +1,4 @@
-const CACHE='kalora-shell-v7';
+const CACHE='kalora-shell-v8';
 const PAGES=new Set(['/','/privacy','/terms']);
 const PUBLIC_ASSETS=new Set(['/manifest.json','/icon-192.png','/icon-512.png','/icon-maskable.png','/apple-touch-icon.png']);
 // Keep one handle for this worker. An older worker finishing after activation
@@ -56,6 +56,18 @@ self.addEventListener('install',e=>{e.waitUntil((async()=>{
 self.addEventListener('activate',e=>{e.waitUntil((async()=>{
  await Promise.all((await caches.keys()).filter(k=>k.startsWith('kalora-shell-')&&k!==CACHE).map(k=>caches.delete(k)));
  await self.clients.claim();
+})())});
+
+self.addEventListener('push',e=>{e.waitUntil((async()=>{
+ let message={title:'Kalora',body:'Imaš novu obavijest o svom napretku.',url:'/'};
+ try{if(e.data)message={...message,...e.data.json()}}catch{if(e.data)message.body=e.data.text()}
+ await self.registration.showNotification(String(message.title||'Kalora'),{body:String(message.body||''),icon:'/icon-192.png',badge:'/icon-192.png',tag:String(message.tag||'kalora-update'),data:{url:String(message.url||'/')}});
+})())});
+
+self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil((async()=>{
+ const url=new URL(e.notification.data?.url||'/',self.location.origin).href,clientsList=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+ for(const client of clientsList)if('focus'in client){await client.focus();if('navigate'in client&&client.url!==url)await client.navigate(url);return}
+ await self.clients.openWindow(url);
 })())});
 
 function offlinePage(){

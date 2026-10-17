@@ -33,5 +33,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/push/dispatch",
+      "schedule": "0 17 * * *"
+    }
   ]
 }
