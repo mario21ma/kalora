@@ -17,10 +17,10 @@ test('calendar honors the actual historical target and goal-specific completion 
  const day=calorieDay(state,'2026-10-01');assert.equal(day.target,2500);assert.equal(day.success,true);
  const week=periodCalories(state,['2026-10-01']);assert.ok(Math.abs(week.balance+186)<1);assert.equal(week.successes,1);
 });
-test('target changes freeze logged historical days and write a new effective-day target',()=>{
- const state=initialState(false);state.items=[makeItem(food,100,'breakfast','2026-10-01'),makeItem(food,100,'breakfast','2026-10-03')];
- const former=state.profile.targets,next={...former,calories:2100};const updated=applyTargetFromDate(state,next,'2026-10-03');
- assert.equal(updated.targets['2026-10-01'].calories,former.calories);assert.equal(updated.targets['2026-10-03'].calories,2100);assert.equal(updated.profile.targets.calories,2100);assert.equal(state.targets['2026-10-01'],undefined);
+test('target changes freeze every historical day, including days without entries, and write a new effective-day target',()=>{
+ const state=initialState(false);state.items=[makeItem(food,100,'breakfast','2026-10-01'),makeItem(food,100,'breakfast','2026-10-03')];state.weights=[{date:'2026-10-01',kg:75}];state.targets['2026-10-02']={...state.profile.targets,calories:1900};
+ const former=state.profile.targets,next={...former,calories:2100};const updated=applyTargetFromDate(state,next,'2026-10-04');
+ assert.equal(updated.targets['2026-10-01'].calories,former.calories);assert.equal(updated.targets['2026-10-02'].calories,1900);assert.equal(calorieDay(updated,'2026-10-02').target,1900);assert.equal(updated.targets['2026-10-03'].calories,former.calories);assert.equal(updated.targets['2026-10-04'].calories,2100);assert.equal(updated.profile.targets.calories,2100);assert.equal(state.targets['2026-10-01'],undefined);
 });
 test('target recommendation uses the established formula and reports transparent delta',()=>{
  const result=targetAdjustment({...defaultProfile,weight:80,targets:{...defaultProfile.targets,calories:2200}},78);

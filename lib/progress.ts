@@ -44,7 +44,12 @@ export function targetAdjustment(profile:Profile,newWeight:number){
 
 export function applyTargetFromDate(state:State,target:Profile['targets'],date:string):State{
  const snapshots={...state.targets};
- // Freeze the former profile goal for every logged historical date before changing it.
- for(const item of state.items)if(item.date<date&&!snapshots[item.date])snapshots[item.date]=state.profile.targets;
+ // Freeze the former goal for every day in the recorded timeline, including days
+ // without meals; otherwise those days would fall back to the newly edited profile goal.
+ const pastDates=[...state.items.map(item=>item.date),...state.weights.map(weight=>weight.date),...Object.keys(snapshots)].filter(day=>day<date).sort();
+ const first=pastDates[0];
+ if(first){
+  for(let day=first;day<date;day=dayOffset(day,1))if(!snapshots[day])snapshots[day]=state.profile.targets;
+ }
  return {...state,targets:{...snapshots,[date]:target},profile:{...state.profile,targets:target}};
 }
