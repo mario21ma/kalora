@@ -7,10 +7,9 @@ export type CalorieDay={date:string;calories:number;target:number;logged:boolean
 export function calorieDay(state:Pick<State,'items'|'targets'|'profile'>,date:string):CalorieDay{
  const items=state.items.filter(item=>item.date===date),calories=sum(items).calories,target=(state.targets[date]||state.profile.targets).calories;
  const logged=items.length>0,eligible=logged&&calories>=target*.7;
- const low=state.profile.goal==='mild'||state.profile.goal==='moderate',upper=low?1.08:1.1;
  const underfed=logged&&calories<target*.7;
- const success=eligible&&(low?calories>=target*.85&&calories<=target*upper:calories>=target*.9&&calories<=target*upper);
- return {date,calories,target,logged,eligible,success,over:eligible&&calories>target*upper,underfed};
+ const success=eligible&&calories<=target;
+ return {date,calories,target,logged,eligible,success,over:eligible&&calories>target,underfed};
 }
 
 export function periodCalories(state:Pick<State,'items'|'targets'|'profile'>,dates:string[]){
